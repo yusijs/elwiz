@@ -1,1 +1,171 @@
-console.log('Hello World!');
+import { Pulse } from '@elwiz/pulse';
+import { join } from 'path';
+import * as yaml from 'yamljs';
+import { ElwizConfig, ElwizLogger, PriceInfo } from '@elwiz/common';
+import { MqttHandler } from '@elwiz/mqtt';
+import { IClientOptions } from 'mqtt';
+import { PriceLoader } from '@elwiz/prices';
+import { RecurrenceRule, scheduleJob } from 'node-schedule';
+import { addPrices, initModels } from '@elwiz/database';
+import { parseISO } from 'date-fns';
+
+const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
+
+const logger = new ElwizLogger(config).logger;
+
+initModels(config, logger)
+  .then(models => {
+    // Messages to send:
+    /*
+    status -> returns current status
+    reboot -> reboot device
+     */
+
+    const mqtt = new MqttHandler(config, logger);
+    mqtt.init();
+
+    const pulse = new Pulse(config, logger);
+    models.List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] })
+      .then(r => {
+        if ( r ) {
+          logger.verbose(`Set lastCumulativePower to ${r.getDataValue('cumuHourPowImpActive')}`);
+          pulse.lastCumulativePower = r.getDataValue('cumuHourPowImpActive');
+        }
+      });
+    const priceLoader = new PriceLoader(config, logger);
+
+
+    mqtt.stream.on('tibber', chunk => {
+      pulse.handleMessages(chunk);
+    });
+
+    pulse.status
+      .on('status', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
+        mqtt.announce(event.topic, event.announce, event.pubOpts);
+        if ( event.topic === config.pubStatus ) {
+          const data = JSON.parse(event.announce);
+          models.PulseStatus.create(data)
+            .catch(err => logger.error('Failed to create PulseStatus', err))
+            .then(() => logger.info('Inserted PulseStatus'));
+        }
+      });
+
+    pulse.device
+      .on('announce', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
+        mqtt.announce(event.topic, event.announce, event.pubOpts);
+      });
+    pulse.pulseData
+      .on('announce', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
+        mqtt.announce(event.topic, event.announce, event.pubOpts);
+      });
+    pulse.pulseData
+      .on('list2', (data: typeof models.List2Data) => {
+        models.List2Data.create(data)
+          .catch(err => logger.error(err))
+          .then(() => logger.verbose('Inserted List2 data'));
+      });
+    pulse.pulseData
+      .on('list3', (data: typeof models.List3Data) => {
+        models.List3Data.create(data)
+          .catch(err => logger.error(err))
+          .then(() => logger.verbose('Inserted List3 data'));
+      });
+
+    priceLoader.price
+      .on('announce', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
+        mqtt.announce(event.topic, event.announce, event.pubOpts);
+      });
+
+    priceLoader.loaded
+      .on('loaded', (data: Array<PriceInfo>) => {
+        addPrices(data, logger)
+          .catch(err => logger.error(err));
+      });
+
+
+    models.Price.findOne({ where: { startTime: parseISO('2022-10-15T22:00:00.000Z') } })
+      .catch(err => logger.error(err))
+      .then(p => logger.info(p));
+
+    priceLoader.init();
+    pulse.init();
+
+    const rebootTibberDevice = () => {
+      const schedule = new RecurrenceRule();
+      schedule.minute = 45;
+      const schedule55 = new RecurrenceRule();
+      schedule55.minute = 55;
+      const cb = function () {
+        logger.info(`Executing scheduled reboot of tibber pulse`);
+        mqtt.announce('rebbit', 'reboot', { qos: 0, retain: false });
+      };
+      scheduleJob(schedule, cb);
+      scheduleJob(schedule55, cb);
+    };
+
+    rebootTibberDevice();
+
+    const loadScheduledPrices = () => {
+      const runSchedule = new RecurrenceRule();
+      runSchedule.minute = 5;
+
+      return scheduleJob(runSchedule, function () {
+        logger.verbose('Loading prices');
+        priceLoader.load()
+          .catch(ex => logger.error('Failed to load prices: ', ex));
+      });
+    };
+
+    const sendPriceToHomeAssistant = () => {
+      const runSchedule = new RecurrenceRule();
+      runSchedule.minute = 2;
+
+      scheduleJob(runSchedule, function () {
+        const now = new Date();
+        models.Price.findOne({ where: { startTime: { lt: now }, endTime: { gt: now } } })
+          .then(price => {
+            if ( price ) {
+              logger.debug(`Sending price for ${now} to home assistant`);
+              logger.verbose('Price to send: ', price);
+            } else {
+              logger.info('No price found for current period');
+            }
+          });
+      });
+    };
+
+    loadScheduledPrices();
+    sendPriceToHomeAssistant();
+
+    if ( config.runNodeSchedule ) {
+      const runSchedule = new RecurrenceRule();
+      runSchedule.hour = config.scheduleHours;
+      runSchedule.minute = config.scheduleMinutes;
+      scheduleJob(runSchedule, function () {
+        priceLoader.load()
+          .catch(ex => logger.error('Failed to load prices: ', ex));
+      });
+    }
+
+  });
+
+// A "kill -INT <process ID> will save the last cumulative power before killing the process
+// Likewise a <Ctrl this.C> will do
+process.on('SIGINT', () => {
+  logger.info('\nGot SIGINT, power saved');
+  process.exit(0);
+});
+
+// A "kill -TERM <process ID> will save the last cumulative power before killing the process
+process.on('SIGTERM', () => {
+  logger.info('\nGot SIGTERM, power saved');
+  process.exit(0);
+});
+
+// A "kill -HUP <process ID> will read the stored last cumulative power file
+process.on('SIGHUP', () => {
+  logger.info('\nGot SIGHUP, config loaded');
+//      this.C = yaml.load(configFile);
+//      this.init();
+});
+

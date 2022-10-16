@@ -14,13 +14,13 @@ export type Device = {
   };
   val_tpl: string;
   name: string;
-  dev_cla: string
+  dev_cla?: string | null
 }
 
 export type DeviceConfig = {
   name: string;
   uniqueId: string;
-  devClass: string;
+  devClass: string | null;
   staClass: string;
   unitOfMeasurement: string;
   stateTopic: string;
