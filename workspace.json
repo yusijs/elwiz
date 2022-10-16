@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "projects": {
+    "ams": "libs/ams",
+    "common": "libs/common",
+    "database": "libs/database",
+    "elwiz": "apps/elwiz",
+    "mqtt": "libs/mqtt",
+    "prices": "libs/prices",
+    "pulse": "libs/pulse"
+  }
+}

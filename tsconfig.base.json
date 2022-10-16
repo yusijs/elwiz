@@ -10,11 +10,33 @@
     "importHelpers": true,
     "target": "es2015",
     "module": "esnext",
-    "lib": ["es2017", "dom"],
+    "lib": [
+      "es2017",
+      "dom"
+    ],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@elwiz/ams": [
+        "libs/ams/src/index.ts"
+      ],
+      "@elwiz/common": [
+        "libs/common/src/index.ts"
+      ],
+      "@elwiz/database": [
+        "libs/database/src/index.ts"
+      ],
+      "@elwiz/mqtt": [
+        "libs/mqtt/src/index.ts"
+      ],
+      "@elwiz/prices": [
+        "libs/prices/src/index.ts"
+      ],
+      "@elwiz/pulse": [
+        "libs/pulse/src/index.ts"
+      ]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }
