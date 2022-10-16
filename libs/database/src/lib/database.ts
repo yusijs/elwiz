@@ -45,7 +45,7 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
   } else {
     sequelize = new Sequelize({
       ...db,
-      logging: (sql: string, timing?: any) => { // "timing" contains details on insert statement
+      logging: (sql: string, timing?: unknown) => { // "timing" contains details on insert statement
         return logger.debug(`${sql}`);
       }
     });

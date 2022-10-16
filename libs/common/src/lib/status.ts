@@ -1,0 +1,30 @@
+export type Status = {
+  rssi: number;
+  ch: number;
+  ssid: string;
+  usbV: string;
+  Vin: string;
+  Vcap: string;
+  Vbck: string;
+  Build: string;
+  Hw: string;
+  bssid: string;
+  Uptime: number;
+  mqttcon: number;
+  pubcnt: number;
+  rxcnt: number;
+  wificon: number;
+  wififail: number;
+  bits: number;
+  cSet: number;
+  Ic: number;
+  crcerr: number;
+  cAx: number;
+  cB: number;
+  heap: number;
+  baud: number;
+  meter: string;
+  ntc: number;
+  ct: number;
+  dtims: number;
+}
