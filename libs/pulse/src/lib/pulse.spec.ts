@@ -1,7 +1,5 @@
-import { pulse } from './pulse';
-
 describe('pulse', () => {
+  // const instance = new Pulse();
   it('should work', () => {
-    expect(pulse()).toEqual('pulse');
   });
 });

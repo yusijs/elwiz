@@ -1,4 +1,4 @@
-import { QoS } from 'mqtt-packet';
+import { IClientPublishOptions, QoS } from 'mqtt';
 
 type SqliteConnection = {
   dialect: 'sqlite';
@@ -13,6 +13,11 @@ type DatabaseConnection = {
   port?: number;
   storage?: string;
   dialect: 'mysql' | 'postgres' | 'sqlite' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle'
+}
+
+type PubOpts = {
+  qos?: QoS;
+  retain?: boolean;
 }
 
 export interface ElwizConfig {
@@ -32,14 +37,10 @@ export interface ElwizConfig {
   REPUBLISH: boolean;
   haPublish: boolean;
   haBaseTopic: string;
-  statusRetain: boolean;
-  statusQos: QoS;
-  list1Retain: boolean;
-  list1Qos: QoS;
-  list2Retain: boolean;
-  list2Qos: QoS;
-  list3Retain: boolean;
-  list3Qos: QoS;
+  list1Opts: IClientPublishOptions;
+  list2Opts: IClientPublishOptions;
+  list3Opts: IClientPublishOptions;
+  statusOpts: IClientPublishOptions;
   keepDays: number;
   runNodeSchedule: boolean;
   scheduleHours: number[];

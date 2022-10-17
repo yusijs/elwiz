@@ -58,19 +58,10 @@ export class Pulse {
 
   public init() {
     this.logger.info(programName + ' is performing, PID: ', programPid);
-
     this.logger.debug(this.config);
 
-    if ( this.config.mqttBroker === null ) {
-      this.logger.info('\nBroker IP address or hostname missing');
-      this.logger.info('Edit your "config.yaml" file\n');
-      process.exit(0);
-    }
-
     this.republish = this.config.REPUBLISH;
-
-    if ( this.config.computePrices !== undefined )
-      this.computePrices = this.config.computePrices;
+    this.computePrices = this.config.computePrices ?? false;
 
     if ( this.computePrices ) {
       // TODO: Sequelize?
@@ -85,10 +76,11 @@ export class Pulse {
     this.haPublish = this.config.haPublish;
     this.haBaseTopic = this.config.haBaseTopic;
 
-    this.list1Opts = { qos: this.config.list1Qos, retain: this.config.list1Retain };
-    this.list2Opts = { qos: this.config.list2Qos, retain: this.config.list2Retain };
-    this.list3Opts = { qos: this.config.list3Qos, retain: this.config.list3Retain };
-    this.statOpts = { qos: this.config.statusQos, retain: this.config.statusRetain };
+    // Pub options
+    this.list1Opts = this.config.list1Opts;
+    this.list2Opts = this.config.list2Opts;
+    this.list3Opts = this.config.list3Opts;
+    this.statOpts = this.config.statusOpts;
 
   }
 

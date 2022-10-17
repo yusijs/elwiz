@@ -49,14 +49,29 @@ haPublish: true
 haBaseTopic: elwiz/sensor
 
 # Publish options for list 1, 2, 3 & status
-statusRetain: true
-statusQos: 1
-list1Retain: true
-list1Qos: 1
-list2Retain: true
-list2Qos: 1
-list3Retain: true
-list3Qos: 1
+list1:
+  qos: 1
+  retain: true
+list2:
+  qos: 1
+  retain: true
+list3:
+  qos: 1
+  retain: true
+status:
+  qos: 1
+  retain: true
+
+# Sequelize database connection info, see https://sequelize.org/docs/v6/getting-started/
+# If none defined, falls back to sqlite memory
+database:
+  database:
+  username:
+  password:
+  host:
+  port:
+  storage: path/to/database.sqlite
+  dialect: sqlite
 
 # The rest of the configuration is only valid
 # for the "getprices" program
@@ -118,14 +133,3 @@ spotVatPercent: 25.0
 gridKwhPrice: 0.4454
 gridDayPrice: 6.66
 gridVatPercent: 0.0
-
-# Sequelize database connection info, see https://sequelize.org/docs/v6/getting-started/
-# If none defined, falls back to sqlite memory
-database:
-  database:
-  username:
-  password:
-  host:
-  port:
-  storage: path/to/database.sqlite
-  dialect: sqlite
