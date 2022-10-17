@@ -47,6 +47,7 @@ export type List2 = ListCommon & {
   meterType: string;
   minPower: number;
   maxPower: number;
+  avgPower?: number;
   /**
    * Current export
    */

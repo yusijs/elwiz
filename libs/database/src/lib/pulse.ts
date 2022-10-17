@@ -57,6 +57,10 @@ export const List2Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
+  avgPower: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
   powExpActive: {
     type: DataTypes.FLOAT,
     allowNull: true

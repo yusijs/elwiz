@@ -9,7 +9,7 @@ import { RecurrenceRule, scheduleJob } from 'node-schedule';
 import { addPrices, initModels } from '@elwiz/database';
 import { addHours, parseISO, startOfHour } from 'date-fns';
 import { Op } from 'sequelize';
-import { Homeassistant, HomeAssistantAnnounce, HomeassistantConfig } from '@elwiz-ts/homeassistant';
+import { Homeassistant, HomeassistantConfig } from '@elwiz-ts/homeassistant';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
 const homeAssistantConfig: HomeassistantConfig = yaml.load(join(__dirname, 'assets/homeassistant.yaml'));
@@ -29,11 +29,11 @@ initModels(config, logger)
     const mqtt = new MqttHandler(config, logger);
     mqtt.init();
     const homeAssistant = new Homeassistant(homeAssistantConfig, logger);
-    homeAssistant.announce
-      .on('configure', ({ topic, device, pubOpts }: HomeAssistantAnnounce) => {
-        mqtt.announce(topic, device, pubOpts);
-      });
-    homeAssistant.init();
+    /*    homeAssistant.announce
+          .on('configure', ({ topic, device, pubOpts }: HomeAssistantAnnounce) => {
+            mqtt.announce(topic, device, pubOpts);
+          });
+        homeAssistant.init();*/
 
     const pulse = new Pulse(config, logger);
 
