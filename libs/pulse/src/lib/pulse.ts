@@ -6,6 +6,7 @@ import { getHassDevice } from './device';
 import { amsDecoder } from '@elwiz/ams';
 import { Logger } from 'winston';
 import { IClientPublishOptions } from 'mqtt/types/lib/client-options';
+import { getHomeAssistanDevices } from './homeassistant';
 
 const list1Name = 'list1';
 const list2Name = 'list2';
@@ -55,176 +56,7 @@ export class Pulse {
   }
 
 
-  hassAnnounce() {
-    const haTopic = this.haAnnounceTopic;
-    const qos = 1 as QoS;
-    const pubOpts = { qos, retain: true };
-
-    const entities = [
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}lastMeterConsumption/config`,
-        name: 'Last meter consumption',
-        uniqueId: 'last_meter_consumption',
-        devClass: 'energy',
-        staClass: 'total_increasing',
-        unitOfMeasurement: 'kWh',
-        stateTopic: 'lastMeterConsumption'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}accumulatedConsumption/config`,
-        name: 'Accumulated consumption today',
-        uniqueId: 'accumulated_consumption',
-        devClass: 'energy',
-        staClass: 'total',
-        unitOfMeasurement: 'kWh',
-        stateTopic: 'accumulatedConsumption'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}accumulatedConsumptionLastHour/config`,
-        name: 'Accumulated consumption last hour',
-        uniqueId: 'accumulated_consumption_last_hour',
-        devClass: 'energy',
-        staClass: 'total_increasing',
-        unitOfMeasurement: 'kWh',
-        stateTopic: 'accumulatedConsumptionLastHour'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}lastMeterProduction/config`,
-        name: 'Last meter production',
-        uniqueId: 'last_meter_production',
-        devClass: 'energy',
-        staClass: 'total_increasing',
-        unitOfMeasurement: 'kWh',
-        stateTopic: 'lastMeterProduction'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}accumulatedProduction/config`,
-        name: 'Accumulated production today',
-        uniqueId: 'accumulated_production',
-        devClass: 'energy',
-        staClass: 'total',
-        unitOfMeasurement: 'kWh',
-        stateTopic: 'accumulatedProduction'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}accumulatedProductionLastHour/config`,
-        name: 'Accumulated production last hour',
-        uniqueId: 'accumulated_production_last_hour',
-        devClass: 'energy',
-        staClass: 'total_increasing',
-        unitOfMeasurement: 'kWh',
-        stateTopic: 'accumulatedProductionLastHour'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}power/config`,
-        name: 'Current power use',
-        uniqueId: 'power_current_use',
-        devClass: 'power',
-        staClass: 'measurement',
-        unitOfMeasurement: 'kW',
-        stateTopic: 'power'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}minPower/config`,
-        name: 'Min power since midnight',
-        uniqueId: 'min_power_since_midnight',
-        devClass: 'power',
-        staClass: 'measurement',
-        unitOfMeasurement: 'kW',
-        stateTopic: 'minPower'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}maxPower/config`,
-        name: 'Max power since midnight',
-        uniqueId: 'max_power_since_midnight',
-        devClass: 'power',
-        staClass: 'measurement',
-        unitOfMeasurement: 'kW',
-        stateTopic: 'maxPower'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}voltagePhase1/config`,
-        name: 'Voltage phase 1',
-        uniqueId: 'voltage_phase_1',
-        devClass: 'voltage',
-        staClass: 'measurement',
-        unitOfMeasurement: 'V',
-        stateTopic: 'voltagePhase1'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}voltagePhase2/config`,
-        name: 'Voltage phase 2',
-        uniqueId: 'voltage_phase_2',
-        devClass: 'voltage',
-        staClass: 'measurement',
-        unitOfMeasurement: 'V',
-        stateTopic: 'voltagePhase2'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}voltagePhase3/config`,
-        name: 'Voltage phase 3',
-        uniqueId: 'voltage_phase_3',
-        devClass: 'voltage',
-        staClass: 'measurement',
-        unitOfMeasurement: 'V',
-        stateTopic: 'voltagePhase3'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}currentL1/config`,
-        name: 'Current L1',
-        uniqueId: 'current_L1',
-        devClass: 'current',
-        staClass: 'measurement',
-        unitOfMeasurement: 'A',
-        stateTopic: 'currentL1'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}currentL2/config`,
-        name: 'Current L2',
-        uniqueId: 'current_L2',
-        devClass: 'current',
-        staClass: 'measurement',
-        unitOfMeasurement: 'A',
-        stateTopic: 'currentL2'
-      },
-      {
-        haBaseTopic: this.haBaseTopic,
-        topic: `${haTopic}currentL3/config`,
-        name: 'Current L3',
-        uniqueId: 'current_L3',
-        devClass: 'current',
-        staClass: 'measurement',
-        unitOfMeasurement: 'A',
-        stateTopic: 'currentL3'
-      },
-    ];
-    entities
-      .forEach(d => {
-        const { topic, ...rest } = d;
-        const announce = getHassDevice(rest);
-        this.device.emit('announce', { announce: JSON.stringify(announce), topic, pubOpts });
-      });
-
-    // Set retain flag (pubOpts) on status message to let HA find it after a stop/restart
-    this.device.emit('announce', { topic: this.haBaseTopic + '/status', announce: 'online', pubOpts });
-    // Populate lastMeterConsumption from storage to prevent up to one hour wait after a restart or stop
-  }
-
-  init() {
+  public init() {
     this.logger.info(programName + ' is performing, PID: ', programPid);
 
     this.logger.debug(this.config);
@@ -247,7 +79,7 @@ export class Pulse {
       }*/
     }
 
-    this.hassAnnounce();
+    this.createHomeAssistantDevices();
 
     // Home Assistant Base Topic
     this.haPublish = this.config.haPublish;
@@ -259,7 +91,6 @@ export class Pulse {
     this.statOpts = { qos: this.config.statusQos, retain: this.config.statusRetain };
 
   }
-
 
   public handleMessages(message: Buffer) {
     const buf = Buffer.from(message);
@@ -289,13 +120,13 @@ export class Pulse {
     } else {
       const data = amsDecoder(message, this.config, this.logger);
       switch ( data.type ) {
-        case 'list1':
+        case list1Name:
           this.announce(`pulse/meter/${list1Name}`, data);
           break;
-        case 'list2':
+        case list2Name:
           this.announce(`pulse/meter/${list2Name}`, data);
           break;
-        case 'list3': {
+        case list3Name: {
           const list3Data = this.convertList3Data(data);
           this.announce(`pulse/meter/${list3Name}`, list3Data);
         }
@@ -306,6 +137,24 @@ export class Pulse {
           this.logger.debug(`str value: ${buf.toString()}`);
       }
     }
+  }
+
+  private createHomeAssistantDevices() {
+    const haTopic = this.haAnnounceTopic;
+    const qos = 1 as QoS;
+    const pubOpts = { qos, retain: true };
+
+    const entities = getHomeAssistanDevices(this.haBaseTopic, haTopic);
+    entities
+      .forEach(d => {
+        const { topic, ...rest } = d;
+        const announce = getHassDevice(rest);
+        this.device.emit('announce', { announce: JSON.stringify(announce), topic, pubOpts });
+      });
+
+    // Set retain flag (pubOpts) on status message to let HA find it after a stop/restart
+    this.device.emit('announce', { topic: this.haBaseTopic + '/status', announce: 'online', pubOpts });
+    // Populate lastMeterConsumption from storage to prevent up to one hour wait after a restart or stop
   }
 
   private convertList3Data(json: List3) {
@@ -344,10 +193,10 @@ export class Pulse {
     data.minPower = this.minPowerHour;
     data.maxPower = this.maxPowerHour;
     const pubOpts = { qos: 1, retain: true };
-    if ( data.type === 'list1' ) {
+    if ( data.type === list1Name ) {
       this.pulseData.emit(data.type, data);
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/power', announce: data.powImpActive.toString(), pubOpts });
-    } else if ( data.type === 'list2' ) {
+    } else if ( data.type === list2Name ) {
       this.pulseData.emit(data.type, data);
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/power', announce: ( data.powImpActive ?? 0 ).toString(), pubOpts });
@@ -371,11 +220,11 @@ export class Pulse {
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL2', announce: ( data.currentL2 / 10 ).toString(), pubOpts });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL3', announce: ( data.currentL3 / 10 ).toString(), pubOpts });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/signalStrength', announce: data.toString(), pubOpts });
-    } else if ( data.type === 'list3' ) {
+    } else if ( data.type === list3Name ) {
 
       // this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });
       // writeFileSync(join(__dirname, 'data', 'data3.json'), JSON.stringify({data, haData}, null, 2))
-      this.pulseData.emit('list3', data);
+      this.pulseData.emit(list3Name, data);
       this.lastCumulativePower = data.cumuHourPowImpActive!;
       if ( data.accumulatedConsumptionLastHour ) {
         this.pulseData.emit('announce', {

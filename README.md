@@ -32,3 +32,4 @@ In no particular order:
 * More tests
 * Support kamstrup AMS
 * Priceloader needs more attention, not as stable atm. Look at using entsoe.eu API
+* Add more data to list3, add pr-hour usage etc
