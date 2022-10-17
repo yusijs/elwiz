@@ -1,0 +1,131 @@
+---
+# The IP address or hostname
+# of your favorite MQTT broker
+mqttBroker: 127.0.0.1
+brokerPort: 1883
+
+# Enter credetials if needed
+userName:
+password:
+
+# Listening topic
+topic: tibber/#
+
+# Topics for publishing
+pubTopic: pulse/meter
+pubStatus: pulse/status
+pubNotice: pulse/notice
+
+# ElWiz event messages
+willMessage: ElWiz has left the building
+greetMessage: ElWiz is performing
+
+# Tibber Pulse event messages
+onlineMessage: Pulse is talking
+offlineMessage: Pulse is quiet
+
+# Defines level of logging, defaults to info. Valid options from least to most is:
+# error, warn, info, verbose, debug
+logLevel: verbose
+
+# Log format
+# 1 = JSON (good for file storage)
+# 2 = Simple (readable, useful in dev mode)
+# 3 = Formatted json
+logFormat: 2
+
+# Output log to file or console. Defaults to console
+logOutput:
+
+# Republish mode at startup
+REPUBLISH: true
+
+# The next options are for Home Assistant
+# Publish to Home Assistant (defaults to true)?
+# Set this to "false" if you don't want HA auto discovery
+haPublish: true
+
+# Home Assistant sensor base topic (defaults to "elwiz/sensor")
+haBaseTopic: elwiz/sensor
+
+# Publish options for list 1, 2, 3 & status
+statusRetain: true
+statusQos: 1
+list1Retain: true
+list1Qos: 1
+list2Retain: true
+list2Qos: 1
+list3Retain: true
+list3Qos: 1
+
+# The rest of the configuration is only valid
+# for the "getprices" program
+
+# Days to keep data files
+# Files older tham "keepDays" are deleted
+keepDays: 7
+
+# Windows users without cron may want to use
+# the "node-schedule" module.
+# Set the following to "true" if that is the case.
+# Cron users should set  it to "false".
+runNodeSchedule: false
+
+# The following recommendedecommended scheduleing
+# will try to fetch prices 10 minutes past
+# the scheduleHours. The same scheduling is
+# recommended for cron users
+scheduleHours: [ 13,15,17,19,21,23 ]
+scheduleMinutes: [ 30 ]
+
+# Your local supplier's price information
+# Setting computePrices false for
+# only returning naked spot prices (no VAT)
+# Because electricity prices has been going wild lately,
+# it's could be wise to let this remain false at the moment.
+# The price calculation will probably be wrong regardless.
+# Spot prices still works great, however.
+computePrices: false
+
+# Use the same currency as your local supplier
+# The following currencies are available:
+# EUR, SEK, NOK, DKR
+priceCurrency: NOK
+
+# The following regions are available.
+# Sweden, Finland, Denmark
+# [SE1, SE2, SE3, SE4, FI, DK1, DK2]
+# [  1,   2,   3,   4,  5,   6,   7]
+# Norway
+# [Oslo, Kr.sand, Bergen, Molde, Tr.heim, Tromsø]
+# [   8,       9,     10,    11,      12,     13]
+# Find your region and insert here.
+# Ask your local supplier if in doubt.
+priceRegion: 9
+
+# Change the following values according
+# to your electric power supplier's invoice
+# Different rate models may require changes to program
+supplierKwhPrice: 0.0
+supplierMonthPrice: 9.0
+supplierVatPercent: 0.0
+
+# Spot market prices are without VAT
+# A VAT percent is usually need for private households
+spotVatPercent: 25.0
+
+# Network cost
+gridKwhPrice: 0.4454
+gridDayPrice: 6.66
+gridVatPercent: 0.0
+
+# Sequelize database connection info, see https://sequelize.org/docs/v6/getting-started/
+# If none defined, falls back to sqlite memory
+database:
+  database:
+  username:
+  password:
+  host:
+  port:
+  storage: path/to/database.sqlite
+  dialect: sqlite
