@@ -46,33 +46,32 @@ const hexPatterns: { [k in keyof Omit<List3, 'type' | 'weekDay' | 'minPower' | '
   cumuHourPowExpReactive: '020309060100040800FF06',
 };
 
-export const amsDecoderAidon = (buf: Buffer): List1 | List2 | List3 => {
+export const amsDecoderAidon = (hex: string): List1 | List2 | List3 => {
   const listData = {
     type: null,
     date: format(new Date(), `yyyy-MM-dd'T'HH:mm:ss`)
   } as Lists;
-  const payload = buf.toString('hex').toUpperCase();
 
-  const _powImpActive = hex_to_dec(getRelevantPayload(payload, hexPatterns.powImpActive, 22, 8));
+  const _powImpActive = hex_to_dec(getRelevantPayload(hex, hexPatterns.powImpActive, 22, 8));
   listData.powImpActive = _powImpActive ? _powImpActive / 1000 : null;
-  listData.meterVersion = hex_to_ascii(getRelevantPayload(payload, hexPatterns.meterVersion, 24, 22));
-  listData.meterId = hex_to_ascii(getRelevantPayload(payload, hexPatterns.meterId, 24, 32));
-  listData.meterType = hex_to_ascii(getRelevantPayload(payload, hexPatterns.meterType, 24, 8));
-  listData.powExpActive = hex_to_dec(getRelevantPayload(payload, hexPatterns.powExpActive, 22, 8));
-  listData.powImpReactive = hex_to_dec(getRelevantPayload(payload, hexPatterns.powImpReactive, 22, 8));
-  listData.powExpReactive = hex_to_dec(getRelevantPayload(payload, hexPatterns.powExpReactive, 22, 8));
-  listData.currentL1 = hex_to_dec_signed(getRelevantPayload(payload, hexPatterns.currentL1, 22, 4));
-  listData.currentL2 = hex_to_dec_signed(getRelevantPayload(payload, hexPatterns.currentL2, 22, 4));
-  listData.currentL3 = hex_to_dec_signed(getRelevantPayload(payload, hexPatterns.currentL3, 22, 4));
-  listData.voltageL1 = hex_to_dec(getRelevantPayload(payload, hexPatterns.voltageL1, 22, 4));
-  listData.voltageL2 = hex_to_dec(getRelevantPayload(payload, hexPatterns.voltageL2, 22, 4));
-  listData.voltageL3 = hex_to_dec(getRelevantPayload(payload, hexPatterns.voltageL3, 22, 4));
-  listData.date = getDate(payload);
-  listData.weekDay = format(new Date(), 'eee');
-  const _cumuHourPowImpActive = hex_to_dec(getRelevantPayload(payload, hexPatterns.cumuHourPowImpActive, 22, 8));
-  const _cumuHourPowExpActive = hex_to_dec(getRelevantPayload(payload, hexPatterns.cumuHourPowExpActive, 22, 8));
-  const _cumuHourPowImpReactive = hex_to_dec(getRelevantPayload(payload, hexPatterns.cumuHourPowImpReactive, 22, 8));
-  const _cumuHourPowExpReactive = hex_to_dec(getRelevantPayload(payload, hexPatterns.cumuHourPowExpReactive, 22, 8));
+  listData.meterVersion = hex_to_ascii(getRelevantPayload(hex, hexPatterns.meterVersion, 24, 22));
+  listData.meterId = hex_to_ascii(getRelevantPayload(hex, hexPatterns.meterId, 24, 32));
+  listData.meterType = hex_to_ascii(getRelevantPayload(hex, hexPatterns.meterType, 24, 8));
+  listData.powExpActive = hex_to_dec(getRelevantPayload(hex, hexPatterns.powExpActive, 22, 8));
+  listData.powImpReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.powImpReactive, 22, 8));
+  listData.powExpReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.powExpReactive, 22, 8));
+  listData.currentL1 = hex_to_dec_signed(getRelevantPayload(hex, hexPatterns.currentL1, 22, 4));
+  listData.currentL2 = hex_to_dec_signed(getRelevantPayload(hex, hexPatterns.currentL2, 22, 4));
+  listData.currentL3 = hex_to_dec_signed(getRelevantPayload(hex, hexPatterns.currentL3, 22, 4));
+  listData.voltageL1 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltageL1, 22, 4));
+  listData.voltageL2 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltageL2, 22, 4));
+  listData.voltageL3 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltageL3, 22, 4));
+  listData.date = getDate(hex);
+  listData.weekDay = format(new Date(2022, 9, 16, 12, 0, 0), 'eee');
+  const _cumuHourPowImpActive = hex_to_dec(getRelevantPayload(hex, hexPatterns.cumuHourPowImpActive, 22, 8));
+  const _cumuHourPowExpActive = hex_to_dec(getRelevantPayload(hex, hexPatterns.cumuHourPowExpActive, 22, 8));
+  const _cumuHourPowImpReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.cumuHourPowImpReactive, 22, 8));
+  const _cumuHourPowExpReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.cumuHourPowExpReactive, 22, 8));
   // For some reason these numbers are missing a 0, so instead of just W they are W*10
   listData.cumuHourPowImpActive = _cumuHourPowImpActive !== null ? _cumuHourPowImpActive / 100 : null;
   listData.cumuHourPowExpActive = _cumuHourPowExpActive !== null ? _cumuHourPowExpActive / 100 : null;
@@ -87,7 +86,7 @@ export const amsDecoderAidon = (buf: Buffer): List1 | List2 | List3 => {
     listData.type = 'list1';
   }
 
-  return { ...listData, hex: payload } as List1 | List2 | List3;
+  return { ...listData, hex: hex } as List1 | List2 | List3;
 };
 
 

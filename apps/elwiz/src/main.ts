@@ -19,6 +19,7 @@ initModels(config, logger)
     /*
     status -> returns current status
     reboot -> reboot device
+    update -> request update (need update-url)
      */
 
     const mqtt = new MqttHandler(config, logger);

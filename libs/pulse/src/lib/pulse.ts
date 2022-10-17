@@ -287,7 +287,7 @@ export class Pulse {
         this.status.emit('status', { topic: this.config.pubNotice, announce: this.config.greetMessage, pubOpts: this.statOpts });
       this.logger.debug('Pulse is starting: ' + this.config.pubNotice + ' ', msg);
     } else {
-      const data = amsDecoder(message);
+      const data = amsDecoder(message, this.config, this.logger);
       switch ( data.type ) {
         case 'list1':
           this.announce(`pulse/meter/${list1Name}`, data);

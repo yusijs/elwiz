@@ -57,6 +57,10 @@ export interface ElwizConfig {
   logLevel?: 'error' | 'warn' | 'info' | 'verbose' | 'debug';
   logFormat?: number;
   logOutput?: 'file' | 'console';
+  /**
+   * kamstrup not supported right now
+   */
+  meterType: 'kaifa' | 'aidon' | 'kamstrup';
   // database: 'sqlite' | 'mysql' | 'postgres' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle';
   // sqlite: SqliteConnection;
   database: DatabaseConnection;

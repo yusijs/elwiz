@@ -74,12 +74,9 @@ const values = {
     weekDay: 'Sun'
   }
 };
-const list3Buffer = Buffer.from(hex.list3, 'hex');
-const list3Data = amsDecoderAidon(list3Buffer);
-const list2Buffer = Buffer.from(hex.list2, 'hex');
-const list2Data = amsDecoderAidon(list2Buffer);
-const list1Buffer = Buffer.from(hex.list1, 'hex');
-const list1Data = amsDecoderAidon(list1Buffer);
+const list3Data = amsDecoderAidon(hex.list3);
+const list2Data = amsDecoderAidon(hex.list2);
+const list1Data = amsDecoderAidon(hex.list1);
 
 describe('amsDecoderAidon', () => {
   it('should decode list3 correctly', () => {
@@ -95,8 +92,7 @@ describe('amsDecoderAidon', () => {
     expect(data).toEqual(values.list1);
   });
   it('should return list.type = null when invalid hex', () => {
-    const buf = Buffer.from('AABBCC', 'hex');
-    const invalidData = amsDecoderAidon(buf);
+    const invalidData = amsDecoderAidon('AABBCC');
     expect(invalidData.type).toBeNull();
   });
 });
