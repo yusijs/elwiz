@@ -31,7 +31,6 @@ const values = {
   },
   list2: {
     type: 'list2',
-    date: null,
     powImpActive: 1.672,
     meterVersion: 'AIDON_V0001',
     meterId: '7359992891237028',
@@ -49,11 +48,9 @@ const values = {
     cumuHourPowExpActive: null,
     cumuHourPowImpReactive: null,
     cumuHourPowExpReactive: null,
-    weekDay: 'Sun'
   },
   list1: {
     type: 'list1',
-    date: null,
     powImpActive: 0.512,
     meterVersion: null,
     meterId: null,
@@ -71,7 +68,6 @@ const values = {
     cumuHourPowExpActive: null,
     cumuHourPowImpReactive: null,
     cumuHourPowExpReactive: null,
-    weekDay: 'Sun'
   }
 };
 const list3Data = amsDecoderAidon(hex.list3);
@@ -84,11 +80,11 @@ describe('amsDecoderAidon', () => {
     expect(data).toEqual(values.list3);
   });
   it('should decode list2 correctly', () => {
-    const { hex, ...data } = list2Data;
+    const { hex, date, weekDay, ...data } = list2Data;
     expect(data).toEqual(values.list2);
   });
   it('should decode list1 correctly', () => {
-    const { hex, ...data } = list1Data;
+    const { hex, date, weekDay, ...data } = list1Data;
     expect(data).toEqual(values.list1);
   });
   it('should return list.type = null when invalid hex', () => {

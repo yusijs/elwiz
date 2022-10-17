@@ -32,7 +32,6 @@ const values = {
   list2: {
     'type': 'list2',
     'powImpActive': 3426,
-    date: null,
     'powExpActive': 0,
     'powImpReactive': 0,
     'powExpReactive': 52,
@@ -49,12 +48,10 @@ const values = {
     'meterVersion': 'KFM_00',
     'meterId': '697063140375761',
     'meterType': 'MA304H3',
-    'weekDay': 'Mon'
   },
   list1: {
     'type': 'list1',
     'powImpActive': 3423,
-    date: null,
     'powExpActive': null,
     'powImpReactive': null,
     'powExpReactive': null,
@@ -71,7 +68,6 @@ const values = {
     'meterVersion': null,
     'meterId': null,
     'meterType': null,
-    'weekDay': 'Mon'
   }
 };
 
@@ -83,12 +79,12 @@ describe('amsDecoderKaifa', () => {
   });
   it('should decode list2 correctly', () => {
     const list2Data = amsDecoderKaifa(hex.list2);
-    const { hex: _hex, ...data } = list2Data;
+    const { hex: _hex, date, weekDay, ...data } = list2Data;
     expect(data).toEqual(values.list2);
   });
   it('should decode list1 correctly', () => {
     const list1Data = amsDecoderKaifa(hex.list1);
-    const { hex: _hex, ...data } = list1Data;
+    const { hex: _hex, date, weekDay, ...data } = list1Data;
     expect(data).toEqual(values.list1);
   });
   it('should return list.type = null when invalid hex', () => {

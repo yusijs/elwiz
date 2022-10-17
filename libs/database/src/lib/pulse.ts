@@ -1,7 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { List1, List2, List3, Status } from '@elwiz/common';
 
-type WithHex<T> = T & { hex: string };
+type WithHex<T> = T & { hex: string; createdAt?: Date; updatedAt?: Date; id?: number; };
 
 export class List1Data extends Model<WithHex<Omit<List1, 'type'>>> {
 }

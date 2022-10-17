@@ -6,8 +6,9 @@ import { MqttHandler } from '@elwiz/mqtt';
 import { IClientOptions } from 'mqtt';
 import { PriceLoader } from '@elwiz/prices';
 import { RecurrenceRule, scheduleJob } from 'node-schedule';
-import { addPrices, initModels } from '@elwiz/database';
-import { parseISO } from 'date-fns';
+import { addPrices, initModels, List1Data } from '@elwiz/database';
+import { addHours, parseISO, startOfHour } from 'date-fns';
+import { Op } from 'sequelize';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
 
@@ -22,10 +23,26 @@ initModels(config, logger)
     update -> request update (need update-url)
      */
 
+
     const mqtt = new MqttHandler(config, logger);
     mqtt.init();
 
     const pulse = new Pulse(config, logger);
+
+    models.List1Data.addHook('afterCreate', (attributes, options) => {
+      const now = startOfHour(new Date());
+      const next = startOfHour(addHours(now, 1));
+      logger.debug([ now.toISOString(), next.toISOString() ].join(', '));
+      List1Data.findAll({ where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } })
+        .then(hourlyData => {
+          const consumption = hourlyData.map(d => {
+            return d.getDataValue('powImpActive');
+          });
+          const max = Math.max(...consumption);
+          const min = Math.min(...consumption);
+          logger.info(`Min is ${min}, Max is ${max}`);
+        });
+    });
     models.List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] })
       .then(r => {
         if ( r ) {
@@ -58,6 +75,12 @@ initModels(config, logger)
     pulse.pulseData
       .on('announce', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
         mqtt.announce(event.topic, event.announce, event.pubOpts);
+      });
+    pulse.pulseData
+      .on('list1', (data: typeof models.List1Data) => {
+        models.List1Data.create(data)
+          .catch(err => logger.error(err))
+          .then(() => logger.verbose('Inserted List1 data'));
       });
     pulse.pulseData
       .on('list2', (data: typeof models.List2Data) => {

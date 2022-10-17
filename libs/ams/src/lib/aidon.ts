@@ -49,7 +49,7 @@ const hexPatterns: { [k in keyof Omit<List3, 'type' | 'weekDay' | 'minPower' | '
 export const amsDecoderAidon = (hex: string): List1 | List2 | List3 => {
   const listData = {
     type: null,
-    date: format(new Date(), `yyyy-MM-dd'T'HH:mm:ss`)
+    date: format(new Date(), `yyyy-MM-dd HH:mm:ss`)
   } as Lists;
 
   const _powImpActive = hex_to_dec(getRelevantPayload(hex, hexPatterns.powImpActive, 22, 8));

@@ -5,8 +5,8 @@ import { getIndexOfHex, getRelevantPayload, hex_to_ascii, hex_to_dec } from './h
 export const amsDecoderKaifa = (hex: string): List1 | List2 | List3 => {
   const listData = {
     type: null,
-    date: null,
-    weekDay: format(new Date(2022, 9, 17, 12, 0, 0), 'eee'),
+    date: format(new Date(), `yyyy-MM-dd HH:mm:ss`),
+    weekDay: format(new Date(), 'eee'),
     powImpActive: null,
     powExpActive: null,
     powImpReactive: null,
