@@ -1,16 +1,18 @@
 import { Pulse } from '@elwiz/pulse';
 import { join } from 'path';
 import * as yaml from 'yamljs';
-import { ElwizConfig, ElwizLogger, PriceInfo } from '@elwiz/common';
+import { ElwizConfig, ElwizLogger, List2, PriceInfo } from '@elwiz/common';
 import { MqttHandler } from '@elwiz/mqtt';
 import { IClientOptions } from 'mqtt';
 import { PriceLoader } from '@elwiz/prices';
 import { RecurrenceRule, scheduleJob } from 'node-schedule';
-import { addPrices, initModels, List1Data } from '@elwiz/database';
+import { addPrices, initModels } from '@elwiz/database';
 import { addHours, parseISO, startOfHour } from 'date-fns';
 import { Op } from 'sequelize';
+import { Homeassistant, HomeAssistantAnnounce, HomeassistantConfig } from '@elwiz-ts/homeassistant';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
+const homeAssistantConfig: HomeassistantConfig = yaml.load(join(__dirname, 'assets/homeassistant.yaml'));
 
 const logger = new ElwizLogger(config).logger;
 
@@ -26,23 +28,29 @@ initModels(config, logger)
 
     const mqtt = new MqttHandler(config, logger);
     mqtt.init();
+    const homeAssistant = new Homeassistant(homeAssistantConfig, logger);
+    homeAssistant.announce
+      .on('configure', ({ topic, device, pubOpts }: HomeAssistantAnnounce) => {
+        mqtt.announce(topic, device, pubOpts);
+      });
+    homeAssistant.init();
 
     const pulse = new Pulse(config, logger);
 
-    models.List1Data.addHook('afterCreate', (attributes, options) => {
-      const now = startOfHour(new Date());
-      const next = startOfHour(addHours(now, 1));
-      logger.debug([ now.toISOString(), next.toISOString() ].join(', '));
-      List1Data.findAll({ where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } })
-        .then(hourlyData => {
-          const consumption = hourlyData.map(d => {
-            return d.getDataValue('powImpActive');
-          });
-          const max = Math.max(...consumption);
-          const min = Math.min(...consumption);
-          logger.info(`Min is ${min}, Max is ${max}`);
-        });
-    });
+    /*    models.List1Data.addHook('afterCreate', (attributes, options) => {
+          const now = startOfHour(new Date());
+          const next = startOfHour(addHours(now, 1));
+          logger.debug([ now.toISOString(), next.toISOString() ].join(', '));
+          List1Data.findAll({ where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } })
+            .then(hourlyData => {
+              const consumption = hourlyData.map(d => {
+                return d.getDataValue('powImpActive');
+              });
+              const max = Math.max(...consumption);
+              const min = Math.min(...consumption);
+              logger.info(`Min is ${min}, Max is ${max}`);
+            });
+        });*/
     models.List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] })
       .then(r => {
         if ( r ) {
@@ -83,8 +91,18 @@ initModels(config, logger)
           .then(() => logger.verbose('Inserted List1 data'));
       });
     pulse.pulseData
-      .on('list2', (data: typeof models.List2Data) => {
-        models.List2Data.create(data)
+      .on('list2', async (data: List2) => {
+        const now = startOfHour(new Date());
+        const next = startOfHour(addHours(now, 1));
+        const maxPower = await models.List1Data
+          .max('powImpActive', { where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } }) as number;
+        const minPower = await models.List1Data
+          .min('powImpActive', { where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } }) as number;
+        const total = await models.List2Data
+          .sum('powImpActive', { where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } }) as number * 10;
+        const mqttAnnounce = Homeassistant.list2Handler(data, { maxPower, minPower, total });
+        logger.debug(`List2 Announce: ${JSON.stringify(mqttAnnounce, null, 2)}`);
+        models.List2Data.create({ ...data, maxPower, minPower })
           .catch(err => logger.error(err))
           .then(() => logger.verbose('Inserted List2 data'));
       });
