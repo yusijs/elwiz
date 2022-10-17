@@ -32,8 +32,8 @@ initModels(config, logger)
     models.List1Data.addHook('afterCreate', (attributes, options) => {
       const now = startOfHour(new Date());
       const next = startOfHour(addHours(now, 1));
-      logger.debug([ now.toISOString(), next.toISOString() ].join(', '));
-      List1Data.findAll({ where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } })
+      logger.debug([now.toISOString(), next.toISOString()].join(', '));
+      List1Data.findAll({ where: { createdAt: { [Op.gte]: now.toISOString(), [Op.lt]: next.toISOString() } } })
         .then(hourlyData => {
           const consumption = hourlyData.map(d => {
             return d.getDataValue('powImpActive');
@@ -43,11 +43,11 @@ initModels(config, logger)
           logger.info(`Min is ${min}, Max is ${max}`);
         });
     });
-    models.List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] })
+    models.List3Data.findOne({ order: [['createdAt', 'DESC']] })
       .then(r => {
-        if ( r ) {
-          logger.verbose(`Set lastCumulativePower to ${r.getDataValue('cumuHourPowImpActive')}`);
-          pulse.lastCumulativePower = r.getDataValue('cumuHourPowImpActive');
+        if (r) {
+          logger.verbose(`Set lastCumulativePower to ${r.getDataValue('lastCumulativePower')}`);
+          pulse.lastCumulativePower = r.getDataValue('lastCumulativePower');
         }
       });
     const priceLoader = new PriceLoader(config, logger);
@@ -60,7 +60,7 @@ initModels(config, logger)
     pulse.status
       .on('status', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
         mqtt.announce(event.topic, event.announce, event.pubOpts);
-        if ( event.topic === config.pubStatus ) {
+        if (event.topic === config.pubStatus) {
           const data = JSON.parse(event.announce);
           models.PulseStatus.create(data)
             .catch(err => logger.error('Failed to create PulseStatus', err))
@@ -148,7 +148,7 @@ initModels(config, logger)
         const now = new Date();
         models.Price.findOne({ where: { startTime: { lt: now }, endTime: { gt: now } } })
           .then(price => {
-            if ( price ) {
+            if (price) {
               logger.debug(`Sending price for ${now} to home assistant`);
               logger.verbose('Price to send: ', price);
             } else {
@@ -161,7 +161,7 @@ initModels(config, logger)
     loadScheduledPrices();
     sendPriceToHomeAssistant();
 
-    if ( config.runNodeSchedule ) {
+    if (config.runNodeSchedule) {
       const runSchedule = new RecurrenceRule();
       runSchedule.hour = config.scheduleHours;
       runSchedule.minute = config.scheduleMinutes;
@@ -189,7 +189,7 @@ process.on('SIGTERM', () => {
 // A "kill -HUP <process ID> will read the stored last cumulative power file
 process.on('SIGHUP', () => {
   logger.info('\nGot SIGHUP, config loaded');
-//      this.C = yaml.load(configFile);
-//      this.init();
+  //      this.C = yaml.load(configFile);
+  //      this.init();
 });
 
