@@ -10,7 +10,7 @@ export class List1Data extends Model<WithHex<Omit<List1, 'type'>>> {
 }
 
 export const List1Attributes = {
-  powImpActive: {
+  power: {
     type: DataTypes.FLOAT,
     allowNull: false
   },
@@ -48,7 +48,7 @@ export const List2Attributes = {
     type: DataTypes.STRING,
     allowNull: false
   },
-  powImpActive: {
+  power: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -60,19 +60,23 @@ export const List2Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
+<<<<<<< HEAD
+  powerProduction: {
+=======
   avgPower: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
   powExpActive: {
+>>>>>>> 4d4f067f98ed3814c533aef4def355a0616b6d6c
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  powImpReactive: {
+  powerReactive: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  powExpReactive: {
+  powerProductionReactive: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -88,15 +92,15 @@ export const List2Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  voltageL1: {
+  voltagePhase1: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  voltageL2: {
+  voltagePhase2: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  voltageL3: {
+  voltagePhase3: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -157,7 +161,7 @@ export const List3Attributes = {
     type: DataTypes.STRING,
     allowNull: false
   },
-  powImpActive: {
+  power: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -169,15 +173,15 @@ export const List3Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  powExpActive: {
+  powerProduction: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  powImpReactive: {
+  powerReactive: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  powExpReactive: {
+  powerProductionReactive: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -193,15 +197,15 @@ export const List3Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  voltageL1: {
+  voltagePhase1: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  voltageL2: {
+  voltagePhase2: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  voltageL3: {
+  voltagePhase3: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -209,19 +213,19 @@ export const List3Attributes = {
     type: DataTypes.DATE,
     allowNull: true
   },
-  cumuHourPowImpActive: {
+  lastMeterConsumption: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  cumuHourPowExpActive: {
+  lastMeterProduction: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  cumuHourPowImpReactive: {
+  lastMeterConsumptionReactive: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  cumuHourPowExpReactive: {
+  lastMeterProductionReactive: {
     type: DataTypes.FLOAT,
     allowNull: true
   },

@@ -6,7 +6,7 @@ type ListCommon = {
   /**
    * powImpActive is the current consumption (instant)
    */
-  powImpActive: number;
+  power: number;
   /**
    * hex represents the buffer converted to hex
    */
@@ -51,9 +51,9 @@ export type List2 = ListCommon & {
   /**
    * Current export
    */
-  powExpActive: number;
-  powImpReactive: number;
-  powExpReactive: number;
+  powerProduction: number;
+  powerReactive: number;
+  powerProductionReactive: number;
   /**
    * Active current on phase1
    */
@@ -69,15 +69,15 @@ export type List2 = ListCommon & {
   /**
    * Active load on phase1
    */
-  voltageL1: number;
+  voltagePhase1: number;
   /**
    * Active load on phase2
    */
-  voltageL2: number;
+  voltagePhase2: number;
   /**
    * Active load on phase3
    */
-  voltageL3: number;
+  voltagePhase3: number;
   /**
    * Date the information was sent from the meter
    */
@@ -93,13 +93,13 @@ export type List3 = Omit<List2, 'type'> & {
   /**
    * How much consumption is read from your meter (total)
    */
-  cumuHourPowImpActive: number;
+  lastMeterConsumption: number;
   /**
    * How much production is read from your meter (total)
    */
-  cumuHourPowExpActive: number;
-  cumuHourPowImpReactive: number;
-  cumuHourPowExpReactive: number;
+  lastMeterProduction: number;
+  lastMeterConsumptionReactive: number;
+  lastMeterProductionReactive: number;
   accumulatedConsumptionLastHour?: number;
   accumulatedConsumption?: number;
   accumulatedProductionLastHour?: number;

@@ -19,7 +19,7 @@ export type HomeAssistantAnnounce = {
 export type HomeAssistantPlugin = (data: List3) => unknown;
 
 export type HomeAssistantPlugins = {
-  [ key: string ]: HomeAssistantPlugin;
+  [key: string]: HomeAssistantPlugin;
 }
 
 export class Homeassistant {
@@ -30,31 +30,31 @@ export class Homeassistant {
 
   public static list3Handler(data: List3, previous: List3, firstOfDay: List3, measurementsSinceMidnight: Array<List1>, thisHour: Array<List2>): HomeAssistantList3 {
     const measurements = thisHour
-      .map(r => r.powImpActive);
+      .map(r => r.power);
     const minPowerCurrentHour = Math.min(...measurements);
     const maxPowerCurrentHour = Math.max(...measurements);
-    const power = measurementsSinceMidnight.map(m => m.powImpActive);
+    const power = measurementsSinceMidnight.map(m => m.power);
     const maxPower = Math.max(...power);
     const minPower = Math.min(...power);
     const hassData = {
       meterDate: data.meterDate ?? data.date,
       timestamp: data.date,
-      power: data.powImpActive,
+      power: data.power,
       minPowerCurrentHour,
       maxPowerCurrentHour,
-      lastMeterConsumption: data.cumuHourPowImpActive,
-      lastMeterProduction: data.cumuHourPowExpActive,
-      accumulatedConsumption: data.cumuHourPowImpActive - firstOfDay.cumuHourPowImpActive,
-      accumulatedProduction: data.cumuHourPowExpActive - firstOfDay.cumuHourPowExpActive,
-      accumulatedConsumptionLastHour: data.cumuHourPowImpActive - previous.cumuHourPowImpActive,
-      accumulatedProductionLastHour: data.cumuHourPowExpActive - previous.cumuHourPowExpActive,
+      lastMeterConsumption: data.lastMeterConsumption,
+      lastMeterProduction: data.lastMeterProduction,
+      accumulatedConsumption: data.lastMeterConsumption - firstOfDay.lastMeterConsumption,
+      accumulatedProduction: data.lastMeterProduction - firstOfDay.lastMeterProduction,
+      accumulatedConsumptionLastHour: data.lastMeterConsumption - previous.lastMeterConsumption,
+      accumulatedProductionLastHour: data.lastMeterProduction - previous.lastMeterProduction,
       minPower,
       maxPower,
       minPowerProduction: 0,
       maxPowerProduction: 0,
-      voltagePhase1: data.voltageL1,
-      voltagePhase2: data.voltageL2,
-      voltagePhase3: data.voltageL3,
+      voltagePhase1: data.voltagePhase1,
+      voltagePhase2: data.voltagePhase2,
+      voltagePhase3: data.voltagePhase3,
       currentL1: data.currentL1,
       currentL2: data.currentL2,
       currentL3: data.currentL3,
@@ -70,14 +70,14 @@ export class Homeassistant {
 
     const hassData = {
       timestamp: current.date,
-      power: current.powImpActive,
+      power: current.power,
       accumulatedConsumptionLastHour: total,
       accumulatedProductionLastHour: 0,
       minPowerCurrentHour: minPower,
       maxPowerCurrentHour: maxPower,
-      voltagePhase1: current.voltageL1,
-      voltagePhase2: current.voltageL2,
-      voltagePhase3: current.voltageL3,
+      voltagePhase1: current.voltagePhase1,
+      voltagePhase2: current.voltagePhase2,
+      voltagePhase3: current.voltagePhase3,
       currentL1: current.currentL1,
       currentL2: current.currentL2,
       currentL3: current.currentL3,
@@ -86,17 +86,17 @@ export class Homeassistant {
   }
 
   public init() {
-    if ( !this.config.enabled ) {
+    if (!this.config.enabled) {
       this.logger.warn('Homeassistant plugin did not start: Enable in config');
       return;
     }
     this.config.entities
       .map(device => getHassDevice(this.config.sensorTopic, device))
-      .map(device => ( {
+      .map(device => ({
         topic: `${this.config.configTopic}/${device.stat_t}/config`,
         device: JSON.stringify(device),
         pubOpts: this.config.pubOpts
-      } ) as HomeAssistantAnnounce)
+      }) as HomeAssistantAnnounce)
       .forEach(data => this.announce.emit('configure', data));
   }
 }
