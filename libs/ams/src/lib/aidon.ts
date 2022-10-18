@@ -71,12 +71,12 @@ export const amsDecoderAidon = (hex: string): List1 | List2 | List3 => {
   const _lastMeterConsumption = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterConsumption, 22, 8));
   const _lastMeterProduction = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterProduction, 22, 8));
   const _lastMeterConsumptionReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterConsumptionReactive, 22, 8));
-  const _cumuHourPowExpReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.cumuHourPowExpReactive, 22, 8));
+  const _lastMeterProductionReactive = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterProductionReactive, 22, 8));
   // For some reason these numbers are missing a 0, so instead of just W they are W*10
   listData.lastMeterConsumption = _lastMeterConsumption !== null ? _lastMeterConsumption / 100 : null;
   listData.lastMeterProduction = _lastMeterProduction !== null ? _lastMeterProduction / 100 : null;
   listData.lastMeterConsumptionReactive = _lastMeterConsumptionReactive !== null ? _lastMeterConsumptionReactive / 100 : null;
-  listData.cumuHourPowExpReactive = _cumuHourPowExpReactive !== null ? _cumuHourPowExpReactive / 100 : null;
+  listData.lastMeterProductionReactive = _lastMeterProductionReactive !== null ? _lastMeterProductionReactive / 100 : null;
 
   if (listData.lastMeterConsumption) {
     listData.type = 'list3';

@@ -36,7 +36,7 @@ initModels(config, logger)
       List1Data.findAll({ where: { createdAt: { [Op.gte]: now.toISOString(), [Op.lt]: next.toISOString() } } })
         .then(hourlyData => {
           const consumption = hourlyData.map(d => {
-            return d.getDataValue('powImpActive');
+            return d.getDataValue('power');
           });
           const max = Math.max(...consumption);
           const min = Math.min(...consumption);
@@ -46,8 +46,8 @@ initModels(config, logger)
     models.List3Data.findOne({ order: [['createdAt', 'DESC']] })
       .then(r => {
         if (r) {
-          logger.verbose(`Set lastCumulativePower to ${r.getDataValue('lastCumulativePower')}`);
-          pulse.lastCumulativePower = r.getDataValue('lastCumulativePower');
+          //logger.verbose(`Set lastCumulativePower to ${r.getDataValue('lastCumulativePower')}`);
+          //pulse.lastCumulativePower = r.getDataValue('lastCumulativePower');
         }
       });
     const priceLoader = new PriceLoader(config, logger);

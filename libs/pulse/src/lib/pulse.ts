@@ -172,7 +172,7 @@ export class Pulse {
 
     const d = new Date();
     const hour = d.getHours();
-    if (data.powImpActive) {
+    if (data.power) {
       if (hour !== this.hour) {
         this.minPowerHour = data.power;
         this.maxPowerHour = data.power;
@@ -196,17 +196,17 @@ export class Pulse {
 
       this.pulseData.emit('announce', {
         topic: this.haBaseTopic + '/voltagePhase1',
-        announce: (data.voltageL1 / 10).toString(),
+        announce: (data.voltagePhase1 / 10).toString(),
         pubOpts
       });
       this.pulseData.emit('announce', {
         topic: this.haBaseTopic + '/voltagePhase2',
-        announce: (data.voltageL2 / 10).toString(),
+        announce: (data.voltagePhase2 / 10).toString(),
         pubOpts
       });
       this.pulseData.emit('announce', {
         topic: this.haBaseTopic + '/voltagePhase3',
-        announce: (data.voltageL3 / 10).toString(),
+        announce: (data.voltagePhase3 / 10).toString(),
         pubOpts
       });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL1', announce: (data.currentL1 / 10).toString(), pubOpts });
@@ -238,7 +238,7 @@ export class Pulse {
            let haData = {
         meterDate: data.meterDate,
         timestamp: data.date,
-        power: data.powImpActive,
+        power: data.power,
         lastMeterConsumption: data.lastMeterConsumption,     // kWh - last meter import register
         lastMeterProduction: data.lastMeterProduction,      // kWh - last meter export register
         accumulatedConsumption: data.accumulatedConsumption, // kWh since midnight
@@ -259,9 +259,9 @@ export class Pulse {
         minPowerProduction: 0,                  // Watt (since midnight)
         maxPowerProduction: 0,                  // Watt (since midnight)
         //powerFactor: 0,                       // (active power / apparent power)
-        voltagePhase1: data.voltageL1,
-        voltagePhase2: data.voltageL3,
-        voltagePhase3: data.voltageL3,
+        voltagePhase1: data.voltagePhase1,
+        voltagePhase2: data.voltagePhase2,
+        voltagePhase3: data.voltagePhase3,
         currentL1: data.currentL1,
         currentL2: data.currentL2,
         currentL3: data.currentL3,

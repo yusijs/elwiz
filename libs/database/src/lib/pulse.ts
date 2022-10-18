@@ -7,7 +7,7 @@ export class List1Data extends Model<WithHex<Omit<List1, 'type'>>> {
 }
 
 export const List1Attributes = {
-  powImpActive: {
+  power: {
     type: DataTypes.FLOAT,
     allowNull: false
   },
