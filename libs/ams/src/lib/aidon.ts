@@ -63,17 +63,10 @@ export const amsDecoderAidon = (hex: string): List1 | List2 | List3 => {
   listData.currentL1 = hex_to_dec_signed(getRelevantPayload(hex, hexPatterns.currentL1, 22, 4));
   listData.currentL2 = hex_to_dec_signed(getRelevantPayload(hex, hexPatterns.currentL2, 22, 4));
   listData.currentL3 = hex_to_dec_signed(getRelevantPayload(hex, hexPatterns.currentL3, 22, 4));
-<<<<<<< HEAD
   listData.voltagePhase1 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltagePhase1, 22, 4));
   listData.voltagePhase2 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltagePhase2, 22, 4));
   listData.voltagePhase3 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltagePhase3, 22, 4));
   listData.date = getDate(hex);
-=======
-  listData.voltageL1 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltageL1, 22, 4));
-  listData.voltageL2 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltageL2, 22, 4));
-  listData.voltageL3 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltageL3, 22, 4));
-  listData.meterDate = getDate(hex);
->>>>>>> 4d4f067f98ed3814c533aef4def355a0616b6d6c
   listData.weekDay = format(new Date(2022, 9, 16, 12, 0, 0), 'eee');
   const _lastMeterConsumption = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterConsumption, 22, 8));
   const _lastMeterProduction = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterProduction, 22, 8));

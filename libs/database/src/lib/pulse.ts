@@ -60,15 +60,11 @@ export const List2Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-<<<<<<< HEAD
-  powerProduction: {
-=======
   avgPower: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
-  powExpActive: {
->>>>>>> 4d4f067f98ed3814c533aef4def355a0616b6d6c
+  powerProduction: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -122,11 +118,11 @@ export const list2Hooks: Partial<ModelHooks<List2Data, Attributes<List2Data>>> =
   beforeCreate: async function (list: List2Data, options: CreateOptions<unknown>): Promise<void> {
     const current = <Date>list.getDataValue('createdAt');
     const hr = startOfHour(current);
-    const rest = await List2Data.findAll({ where: { createdAt: { [ Op.gte ]: hr } } });
-    const power = rest.map(e => e.getDataValue('powImpActive'));
-    const max = Math.max(...power, list.getDataValue('powImpActive'));
-    const min = Math.min(...power, list.getDataValue('powImpActive'));
-    const avg = ( list.getDataValue('powImpActive') + power.reduce((a, b) => a + b, 0) ) / ( power.length + 1 );
+    const rest = await List2Data.findAll({ where: { createdAt: { [Op.gte]: hr } } });
+    const power = rest.map(e => e.getDataValue('power'));
+    const max = Math.max(...power, list.getDataValue('power'));
+    const min = Math.min(...power, list.getDataValue('power'));
+    const avg = (list.getDataValue('power') + power.reduce((a, b) => a + b, 0)) / (power.length + 1);
     list.setDataValue('maxPower', max);
     list.setDataValue('minPower', min);
     list.setDataValue('avgPower', avg);
