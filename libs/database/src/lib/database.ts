@@ -1,10 +1,11 @@
-import { format, startOfHour } from 'date-fns';
-import { CreateOptions, DataTypes, Model, Op, Sequelize } from 'sequelize';
+import { format } from 'date-fns';
+import { DataTypes, Model, Sequelize } from 'sequelize';
 import {
   List1Attributes,
   List1Data,
   List2Attributes,
   List2Data,
+  list2Hooks,
   List3Attributes,
   List3Data,
   PulseStatus,
@@ -77,20 +78,7 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
     PulseStatus.init(PulseStatusAttributes, { sequelize, modelName: 'PulseStatus' });
     List1Data.init(List1Attributes, { sequelize, modelName: 'List1' });
     List2Data.init(List2Attributes, {
-      sequelize, modelName: 'List2', hooks: {
-        beforeCreate: async function (list: List2Data, options: CreateOptions<unknown>): Promise<void> {
-          const current = <Date>list.getDataValue('createdAt');
-          const hr = startOfHour(current);
-          const rest = await List2Data.findAll({ where: { createdAt: { [ Op.gte ]: hr } } });
-          const power = rest.map(e => e.getDataValue('powImpActive'));
-          const max = Math.max(...power, list.getDataValue('powImpActive'));
-          const min = Math.min(...power, list.getDataValue('powImpActive'));
-          const avg = ( list.getDataValue('powImpActive') + power.reduce((a, b) => a + b, 0) ) / ( power.length + 1 );
-          list.setDataValue('maxPower', max);
-          list.setDataValue('minPower', min);
-          list.setDataValue('avgPower', avg);
-        }
-      }
+      sequelize, modelName: 'List2', hooks: list2Hooks
     });
     List3Data.init(List3Attributes, { sequelize, modelName: 'List3' });
     await Price.sync();

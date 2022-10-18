@@ -1,5 +1,8 @@
-import { DataTypes, Model } from 'sequelize';
+import { CreateOptions, DataTypes, Model, Op } from 'sequelize';
 import { List1, List2, List3, Status } from '@elwiz/common';
+import { startOfHour } from 'date-fns';
+import { ModelHooks } from 'sequelize/types/hooks';
+import { Attributes } from 'sequelize/types/model';
 
 type WithHex<T> = T & { hex: string; createdAt?: Date; updatedAt?: Date; id?: number; };
 
@@ -109,6 +112,21 @@ export const List2Attributes = {
     type: DataTypes.DATE,
     allowNull: true
   },
+};
+
+export const list2Hooks: Partial<ModelHooks<List2Data, Attributes<List2Data>>> = {
+  beforeCreate: async function (list: List2Data, options: CreateOptions<unknown>): Promise<void> {
+    const current = <Date>list.getDataValue('createdAt');
+    const hr = startOfHour(current);
+    const rest = await List2Data.findAll({ where: { createdAt: { [ Op.gte ]: hr } } });
+    const power = rest.map(e => e.getDataValue('powImpActive'));
+    const max = Math.max(...power, list.getDataValue('powImpActive'));
+    const min = Math.min(...power, list.getDataValue('powImpActive'));
+    const avg = ( list.getDataValue('powImpActive') + power.reduce((a, b) => a + b, 0) ) / ( power.length + 1 );
+    list.setDataValue('maxPower', max);
+    list.setDataValue('minPower', min);
+    list.setDataValue('avgPower', avg);
+  }
 };
 
 export class List3Data extends Model<WithHex<Omit<List3, 'type'>>> {
