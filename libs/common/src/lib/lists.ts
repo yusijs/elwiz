@@ -100,10 +100,30 @@ export type List3 = Omit<List2, 'type'> & {
   lastMeterProduction: number;
   lastMeterConsumptionReactive: number;
   lastMeterProductionReactive: number;
+  /**
+   * Consumption last hour
+   */
   accumulatedConsumptionLastHour?: number;
+  /**
+   * Consumption since midnight
+   */
   accumulatedConsumption?: number;
+  /**
+   * Production last hour
+   */
   accumulatedProductionLastHour?: number;
+  /**
+   * Production since midnight
+   */
   accumulatedProduction?: number;
+  /**
+   * Peak hrly consumption since midnight
+   */
+  peakConsumptionSinceMidnight?: number;
+  /**
+   * Lowest hrly consumption since midnight
+   */
+  lowestConsumptionSinceMidnight?: number;
   customerPrice?: number;
   lastHourCost?: number;
   spotPrice?: number;

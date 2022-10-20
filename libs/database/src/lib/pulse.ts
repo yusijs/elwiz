@@ -1,6 +1,6 @@
 import { CreateOptions, DataTypes, Model, Op } from 'sequelize';
 import { List1, List2, List3, Status } from '@elwiz/common';
-import { startOfHour } from 'date-fns';
+import { startOfDay, startOfHour } from 'date-fns';
 import { ModelHooks } from 'sequelize/types/hooks';
 import { Attributes } from 'sequelize/types/model';
 
@@ -261,6 +261,34 @@ export const List3Attributes = {
     type: DataTypes.DATE,
     allowNull: true
   },
+};
+
+export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> = {
+  beforeCreate: async function (list: List3Data, options: CreateOptions<unknown>): Promise<void> {
+    const current = <Date>list.getDataValue('createdAt');
+    const hr = startOfDay(current);
+    const rest = await List3Data.findAll({ where: { createdAt: { [ Op.gte ]: hr } }, order: [ [ 'createdAt', 'DESC' ] ] });
+    const previous = await List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] });
+    if ( previous !== null ) {
+      const lastMeterConsumption = previous.getDataValue('lastMeterConsumption');
+      const lastMeterProduction = previous.getDataValue('lastMeterProduction');
+      list.setDataValue('accumulatedConsumptionLastHour', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);
+      list.setDataValue('accumulatedProductionLastHour', list.getDataValue('lastMeterProduction') - lastMeterProduction);
+    }
+    const firstOfDay = rest[ rest.length - 1 ];
+    if ( firstOfDay !== null ) {
+      const lastMeterConsumption = firstOfDay.getDataValue('lastMeterConsumption');
+      const lastMeterProduction = firstOfDay.getDataValue('lastMeterProduction');
+      list.setDataValue('accumulatedConsumption', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);
+      list.setDataValue('accumulatedProduction', list.getDataValue('lastMeterProduction') - lastMeterProduction);
+    }
+    const peak = rest.map(e => e.getDataValue('peakConsumptionSinceMidnight') ?? 0);
+    const bottom = rest.map(e => e.getDataValue('lowestConsumptionSinceMidnight') ?? 0);
+    const max = Math.max(...peak, list.getDataValue('peakConsumptionSinceMidnight') ?? 0);
+    const min = Math.min(...bottom, list.getDataValue('lowestConsumptionSinceMidnight') ?? 0);
+    list.setDataValue('peakConsumptionSinceMidnight', max);
+    list.setDataValue('minPower', min);
+  }
 };
 
 export class PulseStatus extends Model<Status> {

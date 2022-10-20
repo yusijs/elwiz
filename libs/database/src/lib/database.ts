@@ -1,5 +1,4 @@
-import { format } from 'date-fns';
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import { Sequelize } from 'sequelize';
 import {
   List1Attributes,
   List1Data,
@@ -8,15 +7,14 @@ import {
   list2Hooks,
   List3Attributes,
   List3Data,
+  list3Hooks,
   PulseStatus,
   PulseStatusAttributes
 } from './pulse';
 import { ElwizConfig, List2, PriceInfo } from '@elwiz/common';
 import { Logger } from 'winston';
+import { Price, PriceAttributes } from './price';
 
-
-export class Price extends Model<PriceInfo> {
-}
 
 export async function addPrices(prices: Array<PriceInfo>, logger: Logger) {
   try {
@@ -52,35 +50,13 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
     });
   }
   try {
-    Price.init({
-      date: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-      },
-      startTime: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        primaryKey: true,
-        get() {
-          const rawValue = this.getDataValue('startTime') as unknown as Date;
-          return format(rawValue, `yyyy-MM-dd HH:mm:ss`);
-        }
-      },
-      endTime: {
-        type: DataTypes.DATE,
-        allowNull: false
-      },
-      price: {
-        type: DataTypes.FLOAT,
-        allowNull: false
-      },
-    }, { sequelize, modelName: 'Price' });
+    Price.init(PriceAttributes, { sequelize, modelName: 'Price' });
     PulseStatus.init(PulseStatusAttributes, { sequelize, modelName: 'PulseStatus' });
     List1Data.init(List1Attributes, { sequelize, modelName: 'List1' });
     List2Data.init(List2Attributes, {
       sequelize, modelName: 'List2', hooks: list2Hooks
     });
-    List3Data.init(List3Attributes, { sequelize, modelName: 'List3' });
+    List3Data.init(List3Attributes, { sequelize, modelName: 'List3', hooks: list3Hooks });
     await Price.sync();
     await List1Data.sync();
     await List2Data.sync();
