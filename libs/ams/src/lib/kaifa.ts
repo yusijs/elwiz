@@ -29,26 +29,27 @@ export const amsDecoderKaifa = (hex: string): List1 | List2 | List3 => {
 
   let index = getIndexOfHex(hex, 'FF800000', 8) ?? 0;
   const elementCount = index > 0 ? <number>hex_to_dec(hex.substring(index + 2, index + 4)) : 0;
-  // 14/18 = list3
-  // 9/13 = list2
+  const extraOffsetPhase3 = elementCount === 13 || elementCount === 18 ? 2 : 0;
+  // 14/18 = list3. single/3-phase
+  // 9/13 = list2. single/3-phase
   // 1 = list1
 
-  if (elementCount === 1) {
+  if ( elementCount === 1 ) {
     listData.type = 'list1';
     listData.power = hex_to_dec(getRelevantPayload(hex, hex, index + 6, 8));
   }
   let offset: number;
-  if (elementCount >= 9) {
+  if ( elementCount >= 9 ) {
     listData.type = 'list2';
     index = index + 6;
     offset = <number>hex_to_dec(hex.substring(index, index + 2)) * 2;
-    listData.meterVersion = hex_to_ascii(hex.substring(index + 2, index + offset));
+    listData.meterVersion = hex_to_ascii(hex.substring(index + 2, index + offset + extraOffsetPhase3));
     index = index + 4 + offset;
     offset = <number>hex_to_dec(hex.substring(index, index + 2)) * 2;
-    listData.meterId = hex_to_ascii(hex.substring(index + 2, index + offset));
+    listData.meterId = hex_to_ascii(hex.substring(index + 2, index + offset + extraOffsetPhase3));
     index = index + 4 + offset;
     offset = <number>hex_to_dec(hex.substring(index, index + 2)) * 2;
-    listData.meterType = hex_to_ascii(hex.substring(index + 2, index + offset));
+    listData.meterType = hex_to_ascii(hex.substring(index + 2, index + offset + extraOffsetPhase3));
     index = index + 4 + offset;
     listData.power = hex_to_dec(hex.substring(index, index + 8));
     listData.powerProduction = hex_to_dec(hex.substring(index + 10, index + 18));
@@ -77,7 +78,7 @@ export const amsDecoderKaifa = (hex: string): List1 | List2 | List3 => {
     const sek = <number>hex_to_dec(hex.substring(index, index + 2));
     index = index + 2;
     const date = new Date(year, month, day, hour, min, sek);
-    listData.date = format(date, 'yyyy-MM-dd HH:mm:ss');
+    listData.meterDate = format(date, 'yyyy-MM-dd HH:mm:ss');
     listData.weekDay = format(date, 'eee');
     index = index + 10;
     listData.lastMeterConsumption = hex_to_dec(hex.substring(index, index + 8));

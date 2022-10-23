@@ -66,7 +66,7 @@ export const amsDecoderAidon = (hex: string): List1 | List2 | List3 => {
   listData.voltagePhase1 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltagePhase1, 22, 4));
   listData.voltagePhase2 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltagePhase2, 22, 4));
   listData.voltagePhase3 = hex_to_dec(getRelevantPayload(hex, hexPatterns.voltagePhase3, 22, 4));
-  listData.date = getDate(hex);
+  listData.date = getDate(hex) ?? listData.date;
   listData.weekDay = format(new Date(2022, 9, 16, 12, 0, 0), 'eee');
   const _lastMeterConsumption = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterConsumption, 22, 8));
   const _lastMeterProduction = hex_to_dec(getRelevantPayload(hex, hexPatterns.lastMeterProduction, 22, 8));
