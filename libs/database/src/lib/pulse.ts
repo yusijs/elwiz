@@ -29,7 +29,7 @@ export const List2Attributes = {
     allowNull: false
   },
   hex: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   weekDay: {
@@ -49,6 +49,14 @@ export const List2Attributes = {
     allowNull: false
   },
   power: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  maxPowerToday: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  minPowerToday: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -265,18 +273,21 @@ export const List3Attributes = {
 
 export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> = {
   beforeCreate: async function (list: List3Data, options: CreateOptions<unknown>): Promise<void> {
+    if ( !list ) {
+      console.error('List3 value is undefined', list);
+    }
     const current = <Date>list.getDataValue('createdAt');
     const hr = startOfDay(current);
     const rest = await List3Data.findAll({ where: { createdAt: { [ Op.gte ]: hr } }, order: [ [ 'createdAt', 'DESC' ] ] });
     const previous = await List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] });
-    if ( previous !== null ) {
+    if ( previous ) {
       const lastMeterConsumption = previous.getDataValue('lastMeterConsumption');
       const lastMeterProduction = previous.getDataValue('lastMeterProduction');
       list.setDataValue('accumulatedConsumptionLastHour', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);
       list.setDataValue('accumulatedProductionLastHour', list.getDataValue('lastMeterProduction') - lastMeterProduction);
     }
     const firstOfDay = rest[ rest.length - 1 ];
-    if ( firstOfDay !== null ) {
+    if ( firstOfDay ) {
       const lastMeterConsumption = firstOfDay.getDataValue('lastMeterConsumption');
       const lastMeterProduction = firstOfDay.getDataValue('lastMeterProduction');
       list.setDataValue('accumulatedConsumption', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);

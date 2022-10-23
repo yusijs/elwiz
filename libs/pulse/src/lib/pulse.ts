@@ -189,9 +189,9 @@ export class Pulse {
       this.pulseData.emit(data.type, data);
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/power', announce: data.power.toString(), pubOpts });
     } else if (data.type === list2Name) {
-      const pubOpts = this.list2Opts;
+      // const pubOpts = this.list2Opts;
       this.pulseData.emit(data.type, data);
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });
+      /*this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/power', announce: (data.power ?? 0).toString(), pubOpts });
 
       this.pulseData.emit('announce', {
@@ -212,7 +212,7 @@ export class Pulse {
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL1', announce: (data.currentL1 / 10).toString(), pubOpts });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL2', announce: (data.currentL2 / 10).toString(), pubOpts });
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL3', announce: (data.currentL3 / 10).toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/signalStrength', announce: data.toString(), pubOpts });
+      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/signalStrength', announce: data.toString(), pubOpts });*/
     } else if (data.type === list3Name) {
       const pubOpts = this.list3Opts;
       // this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });

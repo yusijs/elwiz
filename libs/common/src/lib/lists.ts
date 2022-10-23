@@ -45,8 +45,22 @@ export type List2 = ListCommon & {
    * Meter type
    */
   meterType: string;
-  minPower: number;
+  /**
+   * Max power usage since midning
+   */
+  maxPowerToday?: number;
+  /**
+   * Min power usage since midning
+   */
+  minPowerToday?: number;
+  /**
+   * Max power usage last hour
+   */
   maxPower: number;
+  /**
+   * Min power usage last hour
+   */
+  minPower: number;
   avgPower?: number;
   /**
    * Current export

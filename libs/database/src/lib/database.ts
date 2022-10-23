@@ -14,6 +14,7 @@ import {
 import { ElwizConfig, List2, PriceInfo } from '@elwiz/common';
 import { Logger } from 'winston';
 import { Price, PriceAttributes } from './price';
+import { OnlineStatus, OnlineStatusAttributes } from './status';
 
 
 export async function addPrices(prices: Array<PriceInfo>, logger: Logger) {
@@ -51,13 +52,16 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
   }
   try {
     Price.init(PriceAttributes, { sequelize, modelName: 'Price' });
+    OnlineStatus.init(OnlineStatusAttributes, { sequelize, modelName: 'OnlineStatus' });
     PulseStatus.init(PulseStatusAttributes, { sequelize, modelName: 'PulseStatus' });
     List1Data.init(List1Attributes, { sequelize, modelName: 'List1' });
     List2Data.init(List2Attributes, {
       sequelize, modelName: 'List2', hooks: list2Hooks
     });
     List3Data.init(List3Attributes, { sequelize, modelName: 'List3', hooks: list3Hooks });
+    // await List2Data.drop();
     await Price.sync();
+    await OnlineStatus.sync();
     await List1Data.sync();
     await List2Data.sync();
     await List3Data.sync();
@@ -70,7 +74,8 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
     List1Data,
     List2Data,
     List3Data,
-    PulseStatus
+    PulseStatus,
+    OnlineStatus
   };
 }
 

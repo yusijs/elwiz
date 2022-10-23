@@ -7,8 +7,7 @@ import { IClientOptions } from 'mqtt';
 import { PriceLoader } from '@elwiz/prices';
 import { RecurrenceRule, scheduleJob } from 'node-schedule';
 import { addPrices, initModels } from '@elwiz/database';
-import { addHours, parseISO, startOfHour } from 'date-fns';
-import { Op } from 'sequelize';
+import { parseISO } from 'date-fns';
 import { Homeassistant, HomeassistantConfig } from '@elwiz-ts/homeassistant';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
@@ -28,6 +27,9 @@ initModels(config, logger)
 
     const mqtt = new MqttHandler(config, logger);
     mqtt.init();
+    mqtt.status.on('status', async (status: string) => {
+      await models.OnlineStatus.create({ status });
+    });
     const homeAssistant = new Homeassistant(homeAssistantConfig, logger);
     /*    homeAssistant.announce
           .on('configure', ({ topic, device, pubOpts }: HomeAssistantAnnounce) => {
@@ -89,28 +91,37 @@ initModels(config, logger)
       .on('list1', (data: typeof models.List1Data) => {
         models.List1Data.create(data)
           .catch(err => logger.error(err))
-          .then(() => logger.verbose('Inserted List1 data'));
+          .then(() => logger.debug('Inserted List1 data'));
       });
     pulse.pulseData
       .on('list2', async (data: List2) => {
-        const now = startOfHour(new Date());
-        const next = startOfHour(addHours(now, 1));
-        const maxPower = await models.List1Data
-          .max('power', { where: { createdAt: { [Op.gte]: now.toISOString(), [Op.lt]: next.toISOString() } } }) as number;
-        const minPower = await models.List1Data
-          .min('power', { where: { createdAt: { [Op.gte]: now.toISOString(), [Op.lt]: next.toISOString() } } }) as number;
-        const total = await models.List2Data
-          .sum('power', { where: { createdAt: { [Op.gte]: now.toISOString(), [Op.lt]: next.toISOString() } } }) as number * 10;
-        const mqttAnnounce = Homeassistant.list2Handler(data, { maxPower, minPower, total });
-        logger.debug(`List2 Announce: ${JSON.stringify(mqttAnnounce, null, 2)}`);
-        models.List2Data.create({ ...data, maxPower, minPower })
-          .catch(err => logger.error(err))
-          .then(() => logger.verbose('Inserted List2 data'));
+        try {
+          const saved = await models.List2Data.create(data);
+          logger.debug('Inserted List2Data');
+          mqtt.announce('meter/list2', JSON.stringify(saved), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/timestamp`, data.date, config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/power`, ( data.power ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/maxPower`, ( data.power ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/minPower`, ( data.power ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/avgPower`, ( data.power ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase1`, ( data.voltagePhase1 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase2`, ( data.voltagePhase2 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase3`, ( data.voltagePhase3 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL1`, ( data.currentL1 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL2`, ( data.currentL2 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL3`, ( data.currentL3 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/signalStrength`, data.toString(), config.list2Opts);
+        } catch ( ex ) {
+          logger.error(ex);
+        }
       });
     pulse.pulseData
       .on('list3', (data: typeof models.List3Data) => {
         models.List3Data.create(data)
-          .catch(err => logger.error(err))
+          .catch(err => {
+            logger.error('Failed to insert list3Data');
+            logger.error(err);
+          })
           .then(() => logger.verbose('Inserted List3 data'));
       });
 

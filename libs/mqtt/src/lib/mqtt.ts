@@ -7,6 +7,7 @@ import { Logger } from 'winston';
 export class MqttHandler {
   public client: Client;
   public stream = new EventEmitter();
+  public status = new EventEmitter();
   private lastMessageReceived: number = Date.now();
   private timedOut = false;
 
@@ -26,6 +27,10 @@ export class MqttHandler {
   }
 
   public announce(topic: string, data: string, pubOpts: IClientPublishOptions = {}) {
+    this.logger.debug(`mqtt:
+topic: ${topic}
+data: ${data}
+opts: ${pubOpts}`);
     this.client.publish(topic, data, pubOpts);
   }
 
@@ -34,6 +39,7 @@ export class MqttHandler {
       const now = Date.now();
       if ( Math.abs(differenceInSeconds(this.lastMessageReceived, now)) > 15 ) {
         if ( !this.timedOut ) {
+          this.status.emit('status', 'offline');
           this.client.publish('elwiz/sensor/status', 'offline', { retain: true, qos: 0 });
           this.logger.error(`${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}: tibber timed out`);
         }
@@ -52,6 +58,7 @@ export class MqttHandler {
         this.lastMessageReceived = Date.now();
         if ( this.timedOut ) {
           this.logger.info(`${format(new Date(), 'yyyy-MM-dd HH:mm:ss')} Tibber back online`);
+          this.status.emit('status', 'online');
           this.client.publish('elwiz/sensor/status', 'online', { retain: true, qos: 0 });
           this.timedOut = false;
         }
