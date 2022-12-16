@@ -7,6 +7,7 @@ import { amsDecoder } from '@elwiz/ams';
 import { Logger } from 'winston';
 import { IClientPublishOptions } from 'mqtt/types/lib/client-options';
 import { getHomeAssistanDevices } from './homeassistant';
+import { Status } from './status';
 
 const list1Name = 'list1';
 const list2Name = 'list2';
@@ -16,7 +17,7 @@ export class Pulse {
   //lastHourConsumption: number;
   lastMeterProduction!: number;
   //lastHourProduction: number;
-  pulseStatus: unknown;
+  pulseStatus!: Status;
   //pulseData3: List2;
   date!: Date;
   //lastMeterConsumption: undefined,
@@ -95,12 +96,17 @@ export class Pulse {
       // BREAKING change
       const m = JSON.parse(msg);
       this.pulseStatus = m.status;
-      if (this.pulseStatus !== undefined)
+      if ( this.pulseStatus !== undefined )
         this.status.emit('status', {
           topic: this.config.pubStatus,
           announce: JSON.stringify(this.pulseStatus, null, 2),
           pubOpts: this.statOpts
         });
+      this.status.emit('status', {
+        topic: `${this.config.haBaseTopic}/signalStrength`,
+        announce: JSON.stringify(this.pulseStatus.rssi, null, 2),
+        pubOpts: this.statOpts
+      });
     }
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore

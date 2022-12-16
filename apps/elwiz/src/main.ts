@@ -71,6 +71,7 @@ initModels(config, logger)
     pulse.status
       .on('status', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
         mqtt.announce(event.topic, event.announce, event.pubOpts);
+
         if (event.topic === config.pubStatus) {
           const data = JSON.parse(event.announce);
           models.PulseStatus.create(data)
@@ -110,19 +111,24 @@ initModels(config, logger)
           mqtt.announce(`${config.haBaseTopic}/currentL1`, ( data.currentL1 / 10 ).toString(), config.list2Opts);
           mqtt.announce(`${config.haBaseTopic}/currentL2`, ( data.currentL2 / 10 ).toString(), config.list2Opts);
           mqtt.announce(`${config.haBaseTopic}/currentL3`, ( data.currentL3 / 10 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/signalStrength`, data.toString(), config.list2Opts);
         } catch ( ex ) {
           logger.error(ex);
         }
       });
     pulse.pulseData
-      .on('list3', (data: typeof models.List3Data) => {
-        models.List3Data.create(data)
-          .catch(err => {
-            logger.error('Failed to insert list3Data');
-            logger.error(err);
-          })
-          .then(() => logger.verbose('Inserted List3 data'));
+      .on('list3', async (data: typeof models.List3Data) => {
+
+        const saved = await models.List3Data.create(data);
+        mqtt.announce(`${config.haBaseTopic}/timestamp`, saved.getDataValue('date'), config.list3Opts);
+        mqtt.announce(`${config.haBaseTopic}/lastMeterConsumption`, saved.getDataValue('lastMeterConsumption').toString(), config.list3Opts);
+        mqtt.announce(`${config.haBaseTopic}/accumulatedConsumptionLastHour`, saved.getDataValue('accumulatedConsumptionLastHour').toString(), config.list3Opts);
+        mqtt.announce(`${config.haBaseTopic}/accumulatedConsumption`, saved.getDataValue('accumulatedConsumption').toString(), config.list3Opts);
+
+        /*          .catch(err => {
+                    logger.error('Failed to insert list3Data');
+                    logger.error(err);
+                  })
+                  .then(() => logger.verbose('Inserted List3 data'));*/
       });
 
     priceLoader.price

@@ -7,7 +7,6 @@ import { DeviceConfig, getHassDevice } from '@elwiz/pulse';
 import { Price } from '@elwiz/database';
 import { Logger } from 'winston';
 
-
 export class PriceLoader {
   public price = new EventEmitter();
   public loaded = new EventEmitter();

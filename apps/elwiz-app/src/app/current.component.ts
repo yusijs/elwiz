@@ -34,8 +34,8 @@ import { DecimalPipe, JsonPipe } from '@angular/common';
         <ng-template #tooltipTemplate
                      let-model="model">
           <span style="font-weight: bold">{{ model.name }}:</span>
-          <span *ngIf="model.name !== 'Voltage'"> {{ model.value | number:'1.2-2' }}</span>
-          <span *ngIf="model.name === 'Voltage'"> {{ model.value * 100 | number:'1.2-2' }}</span>
+          <span *ngIf="model.name !== 'Volt'"> {{ model.value | number:'1.2-2' }}</span>
+          <span *ngIf="model.name === 'Volt'"> {{ model.value * 100 | number:'1.2-2' }}</span>
         </ng-template>
       </ngx-charts-bar-vertical-2d>
     </div>
