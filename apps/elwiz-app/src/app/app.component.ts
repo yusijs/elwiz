@@ -25,9 +25,9 @@ registerLocaleData(localeNo);
   ]
 })
 export class AppComponent {
-  public currentComsumption$ = this.power$.pipe(map(value => [ { name: 'Consumption', value: value } ]));
   private service = inject(SocketService);
   public power$: Observable<number> = this.service.getData('power');
+  public currentComsumption$ = this.power$.pipe(map(value => [ { name: 'Consumption', value: value } ]));
   public status$: Observable<string> = this.service.getData('status');
   public lastUpdate$: Observable<string> = this.service.getData('timestamp');
   public meter$: Observable<number> = this.service.getData('lastMeterConsumption');
