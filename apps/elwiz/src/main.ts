@@ -8,7 +8,7 @@ import { PriceLoader } from '@elwiz/prices';
 import { RecurrenceRule, scheduleJob } from 'node-schedule';
 import { addPrices, initModels } from '@elwiz/database';
 import { parseISO } from 'date-fns';
-import { Homeassistant, HomeassistantConfig } from '@elwiz-ts/homeassistant';
+import { HomeassistantConfig } from '@elwiz-ts/homeassistant';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
 const homeAssistantConfig: HomeassistantConfig = yaml.load(join(__dirname, 'assets/homeassistant.yaml'));
@@ -30,37 +30,8 @@ initModels(config, logger)
     mqtt.status.on('status', async (status: string) => {
       await models.OnlineStatus.create({ status });
     });
-    const homeAssistant = new Homeassistant(homeAssistantConfig, logger);
-    /*    homeAssistant.announce
-          .on('configure', ({ topic, device, pubOpts }: HomeAssistantAnnounce) => {
-            mqtt.announce(topic, device, pubOpts);
-          });
-        homeAssistant.init();*/
 
     const pulse = new Pulse(config, logger);
-
-    /*    models.List1Data.addHook('afterCreate', (attributes, options) => {
-          const now = startOfHour(new Date());
-          const next = startOfHour(addHours(now, 1));
-          logger.debug([ now.toISOString(), next.toISOString() ].join(', '));
-          List1Data.findAll({ where: { createdAt: { [ Op.gte ]: now.toISOString(), [ Op.lt ]: next.toISOString() } } })
-            .then(hourlyData => {
-              const consumption = hourlyData.map(d => {
-                return d.getDataValue('power');
-              });
-              const max = Math.max(...consumption);
-              const min = Math.min(...consumption);
-              logger.info(`Min is ${min}, Max is ${max}`);
-            });
-        });*/
-    models.List3Data.findOne({ order: [['createdAt', 'DESC']] })
-      .then(r => {
-        if (r) {
-          // TODO: find the proper names
-          //logger.verbose(`Set lastCumulativePower to ${r.getDataValue('cumuHourPowImpActive')}`);
-          //pulse.lastCumulativePower = r.getDataValue('cumuHourPowImpActive');
-        }
-      });
     const priceLoader = new PriceLoader(config, logger);
 
 
@@ -100,35 +71,36 @@ initModels(config, logger)
           const saved = await models.List2Data.create(data);
           logger.debug('Inserted List2Data');
           mqtt.announce('meter/list2', JSON.stringify(saved), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/timestamp`, data.date, config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/power`, ( data.power ?? 0 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/maxPower`, ( data.power ?? 0 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/minPower`, ( data.power ?? 0 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/avgPower`, ( data.power ?? 0 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/voltagePhase1`, ( data.voltagePhase1 / 10 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/voltagePhase2`, ( data.voltagePhase2 / 10 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/voltagePhase3`, ( data.voltagePhase3 / 10 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/currentL1`, ( data.currentL1 / 10 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/currentL2`, ( data.currentL2 / 10 ).toString(), config.list2Opts);
-          mqtt.announce(`${config.haBaseTopic}/currentL3`, ( data.currentL3 / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/timestamp`, saved.getDataValue('date'), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/power`, ( saved.getDataValue('power') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/maxPower`, ( saved.getDataValue('maxPower') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/minPower`, ( saved.getDataValue('minPower') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/avgPower`, ( saved.getDataValue('avgPower') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase1`, ( saved.getDataValue('voltagePhase1') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase2`, ( saved.getDataValue('voltagePhase2') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase3`, ( saved.getDataValue('voltagePhase3') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL1`, ( saved.getDataValue('currentL1') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL2`, ( saved.getDataValue('currentL2') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL3`, ( saved.getDataValue('currentL3') / 10 ).toString(), config.list2Opts);
         } catch ( ex ) {
           logger.error(ex);
         }
       });
     pulse.pulseData
       .on('list3', async (data: typeof models.List3Data) => {
-
-        const saved = await models.List3Data.create(data);
-        mqtt.announce(`${config.haBaseTopic}/timestamp`, saved.getDataValue('date'), config.list3Opts);
-        mqtt.announce(`${config.haBaseTopic}/lastMeterConsumption`, saved.getDataValue('lastMeterConsumption').toString(), config.list3Opts);
-        mqtt.announce(`${config.haBaseTopic}/accumulatedConsumptionLastHour`, saved.getDataValue('accumulatedConsumptionLastHour').toString(), config.list3Opts);
-        mqtt.announce(`${config.haBaseTopic}/accumulatedConsumption`, saved.getDataValue('accumulatedConsumption').toString(), config.list3Opts);
-
-        /*          .catch(err => {
-                    logger.error('Failed to insert list3Data');
-                    logger.error(err);
-                  })
-                  .then(() => logger.verbose('Inserted List3 data'));*/
+        try {
+          const saved = await models.List3Data.create(data);
+          mqtt.announce(`${config.haBaseTopic}/timestamp`, saved.getDataValue('date'), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/lastMeterConsumption`, saved.getDataValue('lastMeterConsumption').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedConsumptionLastHour`, saved.getDataValue('accumulatedConsumptionLastHour').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedProductionLastHour`, saved.getDataValue('accumulatedProductionLastHour').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedConsumption`, saved.getDataValue('accumulatedConsumption').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedProduction`, saved.getDataValue('accumulatedProduction').toString(), config.list3Opts);
+          logger.verbose('Inserted List3 data');
+        } catch ( err ) {
+          logger.error('Failed to insert list3Data');
+          logger.error(err);
+        }
       });
 
     priceLoader.price
@@ -208,24 +180,3 @@ initModels(config, logger)
     }
 
   });
-
-// A "kill -INT <process ID> will save the last cumulative power before killing the process
-// Likewise a <Ctrl this.C> will do
-process.on('SIGINT', () => {
-  logger.info('\nGot SIGINT, power saved');
-  process.exit(0);
-});
-
-// A "kill -TERM <process ID> will save the last cumulative power before killing the process
-process.on('SIGTERM', () => {
-  logger.info('\nGot SIGTERM, power saved');
-  process.exit(0);
-});
-
-// A "kill -HUP <process ID> will read the stored last cumulative power file
-process.on('SIGHUP', () => {
-  logger.info('\nGot SIGHUP, config loaded');
-  //      this.C = yaml.load(configFile);
-  //      this.init();
-});
-

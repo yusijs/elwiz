@@ -87,7 +87,7 @@ export class Pulse {
 
   public handleMessages(message: Buffer) {
     const buf = Buffer.from(message);
-    const hex = message.toString('hex');
+    const hex = message.toString('hex').toUpperCase();
     // JSON data
     if (hex === '48656C6C6F') { // hello
       this.device.emit('announce', { topic: this.haBaseTopic + '/status', announce: 'online', pubOpts: { qos: 0, retain: false } });
@@ -199,21 +199,6 @@ export class Pulse {
     } else if (data.type === list3Name) {
       const pubOpts = this.list3Opts;
       this.pulseData.emit(list3Name, data);
-      this.lastCumulativePower = data.lastMeterConsumption!;
-      if (data.accumulatedConsumptionLastHour) {
-        this.pulseData.emit('announce', {
-          topic: this.haBaseTopic + '/accumulatedConsumptionLastHour',
-          announce: (data.accumulatedConsumptionLastHour ?? this.lastCumulativePower)?.toString() ?? '',
-          pubOpts
-        });
-      }
-      if (data.lastMeterConsumption) {
-        this.pulseData.emit('announce', {
-          topic: this.haBaseTopic + '/lastMeterConsumption',
-          announce: (data.lastMeterConsumption ?? this.lastCumulativePower)?.toString() ?? '',
-          pubOpts
-        });
-      }
 
       /*
            let haData = {

@@ -1,6 +1,6 @@
 import { CreateOptions, DataTypes, Model, Op } from 'sequelize';
 import { List1, List2, List3, Status } from '@elwiz/common';
-import { startOfDay, startOfHour } from 'date-fns';
+import { endOfHour, startOfDay, startOfHour } from 'date-fns';
 import { ModelHooks } from 'sequelize/types/hooks';
 import { Attributes } from 'sequelize/types/model';
 
@@ -126,11 +126,12 @@ export const list2Hooks: Partial<ModelHooks<List2Data, Attributes<List2Data>>> =
   beforeCreate: async function (list: List2Data, options: CreateOptions<unknown>): Promise<void> {
     const current = <Date>list.getDataValue('createdAt');
     const hr = startOfHour(current);
-    const rest = await List2Data.findAll({ where: { createdAt: { [Op.gte]: hr } } });
+    const endHr = endOfHour(current);
+    const rest = await List2Data.findAll({ where: { [ Op.and ]: { createdAt: { [ Op.gte ]: hr, [ Op.lte ]: endHr } } } });
     const power = rest.map(e => e.getDataValue('power'));
     const max = Math.max(...power, list.getDataValue('power'));
     const min = Math.min(...power, list.getDataValue('power'));
-    const avg = (list.getDataValue('power') + power.reduce((a, b) => a + b, 0)) / (power.length + 1);
+    const avg = ( list.getDataValue('power') + power.reduce((a, b) => a + b, 0) ) / ( power.length + 1 );
     list.setDataValue('maxPower', max);
     list.setDataValue('minPower', min);
     list.setDataValue('avgPower', avg);
