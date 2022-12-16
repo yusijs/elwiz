@@ -13,7 +13,7 @@ config.logLevel = 'error';
 
 const logger = new ElwizLogger(config).logger;
 
-describe('Init models', () => {
+describe('Database models', () => {
   let models: Awaited<ReturnType<typeof initModels>>;
   beforeEach(async () => {
     models = await initModels(config, logger);
@@ -25,7 +25,7 @@ describe('Init models', () => {
     expect(models.List1Data).toBeDefined();
   });
 
-  describe('List3', () => {
+  describe('List3 postCreateHooks', () => {
 
     it('should calculate accumulatedConsumptionLastHour', async () => {
       const all = await models.List3Data.findAll();
