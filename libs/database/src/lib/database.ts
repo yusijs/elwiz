@@ -11,7 +11,7 @@ import {
   PulseStatus,
   PulseStatusAttributes
 } from './pulse';
-import { ElwizConfig, ElwizPrice, List2 } from '@elwiz/common';
+import { ElwizConfig, ElwizPrice } from '@elwiz/common';
 import { Logger } from 'winston';
 import { Price, PriceAttributes, priceHooks } from './price';
 import { OnlineStatus, OnlineStatusAttributes } from './status';
@@ -45,7 +45,7 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
   } else {
     sequelize = new Sequelize({
       ...db,
-      logging: (sql: string, timing?: unknown) => { // "timing" contains details on insert statement
+      logging: (sql: string) => {
         return logger.debug(`${sql}`);
       }
     });
