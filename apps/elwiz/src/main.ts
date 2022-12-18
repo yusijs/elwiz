@@ -1,17 +1,16 @@
 import { Pulse } from '@elwiz/pulse';
 import { join } from 'path';
 import * as yaml from 'yamljs';
-import { ElwizConfig, ElwizLogger, List2, PriceInfo } from '@elwiz/common';
+import { ElwizConfig, ElwizLogger, List2 } from '@elwiz/common';
 import { MqttHandler } from '@elwiz/mqtt';
 import { IClientOptions } from 'mqtt';
 import { PriceLoader } from '@elwiz/prices';
 import { RecurrenceRule, scheduleJob } from 'node-schedule';
-import { addPrices, initModels } from '@elwiz/database';
-import { parseISO } from 'date-fns';
-import { HomeassistantConfig } from '@elwiz-ts/homeassistant';
+import { addPrices, initModels, Price } from '@elwiz/database';
+import { isThisHour, startOfDay } from 'date-fns';
+import { Op } from 'sequelize';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
-const homeAssistantConfig: HomeassistantConfig = yaml.load(join(__dirname, 'assets/homeassistant.yaml'));
 
 const logger = new ElwizLogger(config).logger;
 
@@ -83,7 +82,9 @@ initModels(config, logger)
           mqtt.announce(`${config.haBaseTopic}/currentL2`, ( saved.getDataValue('currentL2') / 10 ).toString(), config.list2Opts);
           mqtt.announce(`${config.haBaseTopic}/currentL3`, ( saved.getDataValue('currentL3') / 10 ).toString(), config.list2Opts);
         } catch ( ex ) {
+          logger.error('Failed to write list2');
           logger.error(ex);
+          logger.error(JSON.stringify(data, null, 2));
         }
       });
     pulse.pulseData
@@ -103,24 +104,31 @@ initModels(config, logger)
         }
       });
 
-    priceLoader.price
-      .on('announce', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
-        mqtt.announce(event.topic, event.announce, event.pubOpts);
+    priceLoader.priceData
+      .subscribe(async prices => {
+        const sum = prices.map(p => p.price).reduce((a, b) => a + b, 0);
+        const dailyAverage = sum / prices.length;
+        const updated = prices.map(p => ( { ...p, dailyAverage } ));
+        await addPrices(updated, logger);
       });
-
-    priceLoader.loaded
-      .on('loaded', (data: Array<PriceInfo>) => {
-        addPrices(data, logger)
-          .catch(err => logger.error(err));
-      });
-
-
-    models.Price.findOne({ where: { startTime: parseISO('2022-10-15T22:00:00.000Z') } })
-      .catch(err => logger.error(err))
-      .then(p => logger.info(p));
 
     priceLoader.init();
     pulse.init();
+
+    const announcePrice = (price: Price) => {
+      mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')));
+      mqtt.announce(`${config.haBaseTopic}/averagePrice`, JSON.stringify(price.getDataValue('dailyAverage')));
+      mqtt.announce(`${config.haBaseTopic}/averageMonthPrice`, JSON.stringify(price.getDataValue('monthlyAverage')));
+    };
+
+    models.Price.findAll({ where: { time_start: { [ Op.gte ]: startOfDay(new Date()) } } })
+      .then(prices => {
+        const price = prices.find(p => isThisHour(p.getDataValue('time_start')));
+        if ( price ) {
+          announcePrice(price);
+        }
+      })
+      .catch(err => logger.error(err));
 
     const rebootTibberDevice = () => {
       const schedule = new RecurrenceRule();
@@ -148,17 +156,19 @@ initModels(config, logger)
       });
     };
 
-    const sendPriceToHomeAssistant = () => {
+    const sendPricesMqtt = () => {
       const runSchedule = new RecurrenceRule();
-      runSchedule.minute = 2;
+      runSchedule.minute = 0;
+      runSchedule.second = 30;
 
       scheduleJob(runSchedule, function () {
         const now = new Date();
-        models.Price.findOne({ where: { startTime: { lt: now }, endTime: { gt: now } } })
+        models.Price.findOne({ where: { time_start: { lt: now }, time_end: { gt: now } } })
           .then(price => {
-            if (price) {
+            if ( price ) {
               logger.debug(`Sending price for ${now} to home assistant`);
               logger.verbose('Price to send: ', price);
+              announcePrice(price);
             } else {
               logger.info('No price found for current period');
             }
@@ -167,7 +177,7 @@ initModels(config, logger)
     };
 
     loadScheduledPrices();
-    sendPriceToHomeAssistant();
+    sendPricesMqtt();
 
     if (config.runNodeSchedule) {
       const runSchedule = new RecurrenceRule();

@@ -47,7 +47,7 @@ export interface ElwizConfig {
   scheduleMinutes: number[];
   computePrices: boolean;
   priceCurrency: string;
-  priceRegion: number;
+  priceRegion: string;
   supplierKwhPrice: number;
   supplierMonthPrice: number;
   supplierVatPercent: number;

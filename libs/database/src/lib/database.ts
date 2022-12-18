@@ -11,22 +11,22 @@ import {
   PulseStatus,
   PulseStatusAttributes
 } from './pulse';
-import { ElwizConfig, List2, PriceInfo } from '@elwiz/common';
+import { ElwizConfig, ElwizPrice, List2 } from '@elwiz/common';
 import { Logger } from 'winston';
-import { Price, PriceAttributes } from './price';
+import { Price, PriceAttributes, priceHooks } from './price';
 import { OnlineStatus, OnlineStatusAttributes } from './status';
 
 
-export async function addPrices(prices: Array<PriceInfo>, logger: Logger) {
+export async function addPrices(prices: Array<ElwizPrice>, logger: Logger) {
   try {
-    const date = prices[ 0 ].date;
-    const exists = await Price.findOne({ where: { date: date } });
+    const date = prices[ 0 ].time_start;
+    const exists = await Price.findOne({ where: { time_start: date } });
     if ( exists === null ) {
       for ( const price of prices ) {
         try {
-          await Price.create({ ...price, date });
+          await Price.create({ ...price });
         } catch ( ex ) {
-          logger.error(ex);
+          logger.error('Failed to add prices', ex);
         }
       }
       logger.verbose(`Inserted prices for ${date}`);
@@ -51,7 +51,7 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
     });
   }
   try {
-    Price.init(PriceAttributes, { sequelize, modelName: 'Price' });
+    Price.init(PriceAttributes, { sequelize, modelName: 'Price', hooks: priceHooks });
     OnlineStatus.init(OnlineStatusAttributes, { sequelize, modelName: 'OnlineStatus' });
     PulseStatus.init(PulseStatusAttributes, { sequelize, modelName: 'PulseStatus' });
     List1Data.init(List1Attributes, { sequelize, modelName: 'List1' });
@@ -59,13 +59,12 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
       sequelize, modelName: 'List2', hooks: list2Hooks
     });
     List3Data.init(List3Attributes, { sequelize, modelName: 'List3', hooks: list3Hooks });
-    // await List2Data.drop();
-    await Price.sync();
-    await OnlineStatus.sync();
-    await List1Data.sync();
-    await List2Data.sync();
-    await List3Data.sync();
-    await PulseStatus.sync();
+    await Price.sync({ force: true });
+    await OnlineStatus.sync({});
+    await List1Data.sync({});
+    await List2Data.sync({});
+    await List3Data.sync({});
+    await PulseStatus.sync({});
   } catch ( ex ) {
     logger.error(ex);
   }

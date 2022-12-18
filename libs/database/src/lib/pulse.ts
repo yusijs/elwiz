@@ -1,4 +1,4 @@
-import { CreateOptions, DataTypes, Model, Op } from 'sequelize';
+import { DataTypes, Model, Op } from 'sequelize';
 import { List1, List2, List3, Status } from '@elwiz/common';
 import { endOfHour, startOfDay, startOfHour } from 'date-fns';
 import { ModelHooks } from 'sequelize/types/hooks';
@@ -25,7 +25,7 @@ export class List2Data extends Model<WithHex<Omit<List2, 'type'>>> {
 
 export const List2Attributes = {
   date: {
-    type: DataTypes.DATE,
+    type: DataTypes.STRING,
     allowNull: false
   },
   hex: {
@@ -123,7 +123,7 @@ export const List2Attributes = {
 };
 
 export const list2Hooks: Partial<ModelHooks<List2Data, Attributes<List2Data>>> = {
-  beforeCreate: async function (list: List2Data, options: CreateOptions<unknown>): Promise<void> {
+  beforeCreate: async function (list: List2Data): Promise<void> {
     const current = <Date>list.getDataValue('createdAt');
     const hr = startOfHour(current);
     const endHr = endOfHour(current);
@@ -273,7 +273,7 @@ export const List3Attributes = {
 };
 
 export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> = {
-  beforeCreate: async function (list: List3Data, options: CreateOptions<unknown>): Promise<void> {
+  beforeCreate: async function (list: List3Data): Promise<void> {
     if ( !list ) {
       console.error('List3 value is undefined', list);
     }

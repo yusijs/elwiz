@@ -1,4 +1,5 @@
-import { List2, List3 } from '@elwiz/common';
+import { ElwizPrice, List2, List3 } from '@elwiz/common';
+import { eachDayOfInterval, endOfMonth, setHours, startOfMonth } from 'date-fns';
 
 export const list3Data: Array<List3 & { hex: string }> = new Array(23)
   .fill({
@@ -56,3 +57,33 @@ export const list2Data: Array<List2 & { hex: string }> = new Array(50)
     ...r,
     date: `2022-10-01T10:${`${( i + 1 )}`.padStart(2, '0')}:00.000Z`,
   } ));
+
+const d = new Date();
+const start = startOfMonth(d);
+const end = endOfMonth(d);
+const interval: Interval = { start, end };
+const range = eachDayOfInterval(interval);
+export const priceData: Array<ElwizPrice> = range.flatMap(r => {
+  const arr = new Array(23)
+    .fill({
+      date: null,
+      time_start: null,
+      time_end: null,
+      price: null,
+      monthlyAverage: null,
+      dailyAverage: null,
+    }).map((d, i) => {
+      const time_start = setHours(r, i);
+      const time_end = setHours(r, i + 1);
+      return {
+        date: r.toISOString(),
+        time_start,
+        time_end,
+        price: Math.random() * 1000,
+        monthlyAverage: 0,
+        dailyAverage: 0,
+      };
+    });
+  const avg = arr.map(v => v.price).reduce((a, b) => a + b, 0) / arr.length;
+  return arr.map(v => ( { ...v, dailyAverage: avg, monthlyAverage: 0 } ));
+});

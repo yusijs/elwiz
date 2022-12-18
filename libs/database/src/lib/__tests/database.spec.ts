@@ -1,6 +1,6 @@
 import { ElwizConfig, ElwizLogger } from '@elwiz/common';
 import { initModels } from '../database';
-import { list2Data, list3Data } from './data';
+import { list2Data, list3Data, priceData } from './data';
 
 const config: ElwizConfig = {} as ElwizConfig;
 
@@ -13,6 +13,8 @@ config.logLevel = 'error';
 const logger = new ElwizLogger(config).logger;
 
 describe('Database models', () => {
+  jest.setTimeout(10_000);
+
   let models: Awaited<ReturnType<typeof initModels>>;
   beforeEach(async () => {
     models = await initModels(config, logger);
@@ -21,6 +23,17 @@ describe('Database models', () => {
     }
     for ( const d of list2Data ) {
       await models.List2Data.create(d);
+    }
+    await models.Price.destroy({
+      where: {},
+      truncate: true
+    });
+    for ( const d of priceData ) {
+      try {
+        await models.Price.create(d);
+      } catch ( ex ) {
+        console.error(ex);
+      }
     }
   });
   it('should initialize with sqlite', async () => {
@@ -69,6 +82,16 @@ describe('Database models', () => {
       const expectAvg = list2Data.map(v => v.power).reduce((a, b) => a + b, 0) / list2Data.length;
       const actualAvg = last?.getDataValue('avgPower') ?? 0;
       expect(expectAvg).toEqual(actualAvg);
+    });
+  });
+
+  describe('Price postCreateHooks', () => {
+    jest.setTimeout(10_000);
+    it('should calculate monthly average', async () => {
+      jest.setTimeout(10_000);
+      const all = await models.Price.findAll({ order: [ [ 'time_end', 'DESC' ] ] });
+      const expectAverage = all.map(d => d.getDataValue('price')).reduce((a, b) => a + b, 0) / all.length;
+      expect(all[ 0 ].getDataValue('monthlyAverage')).toEqual(parseFloat(expectAverage.toFixed(3)));
     });
   });
 });
