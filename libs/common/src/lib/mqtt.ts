@@ -1,8 +1,10 @@
+import { QoS } from 'mqtt';
+
 export type MqttSubjectData = {
   topic: string;
   announce: string;
   pubOpts?: {
-    qos?: number;
+    qos?: QoS;
     retain?: boolean;
   }
 }

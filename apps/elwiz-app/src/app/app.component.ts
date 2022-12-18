@@ -1,8 +1,7 @@
-import { NxWelcomeComponent } from './nx-welcome.component';
 import { RouterModule } from '@angular/router';
 import { Component, inject, LOCALE_ID } from '@angular/core';
 import { SocketService } from './socket.service';
-import { map, Observable, tap } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { AsyncPipe, DatePipe, DecimalPipe, JsonPipe, NgIf, registerLocaleData, TitleCasePipe } from '@angular/common';
 import localeNo from '@angular/common/locales/no';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -15,7 +14,7 @@ registerLocaleData(localeNo);
 
 @Component({
   standalone: true,
-  imports: [ NxWelcomeComponent, RouterModule, AsyncPipe, DecimalPipe, JsonPipe, DatePipe, MatToolbarModule, MatIconModule, CurrentComponent, TitleCasePipe, NgIf ],
+  imports: [ RouterModule, AsyncPipe, DecimalPipe, JsonPipe, DatePipe, MatToolbarModule, MatIconModule, CurrentComponent, TitleCasePipe, NgIf ],
   selector: 'elwiz-root',
   templateUrl: './app.component.html',
   styleUrls: [ './app.component.scss' ],
@@ -32,5 +31,7 @@ export class AppComponent {
   public lastUpdate$: Observable<string> = this.service.getData('timestamp');
   public meter$: Observable<number> = this.service.getData('lastMeterConsumption');
   public lastHour$: Observable<number> = this.service.getData('accumulatedConsumptionLastHour');
-  public consumption$: Observable<Array<MultiChart>> = this.service.consumptions$.pipe(tap(console.log));
+  public price$: Observable<number> = this.service.getData('price');
+  public averagePrice$: Observable<number> = this.service.getData('averagePrice');
+  public consumption$: Observable<Array<MultiChart>> = this.service.consumptions$.pipe();
 }

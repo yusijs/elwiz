@@ -5,6 +5,7 @@ import { DeviceConfig, getHassDevice } from '@elwiz/pulse';
 import { Logger } from 'winston';
 import { request } from 'https';
 import { ReplaySubject } from 'rxjs';
+import { QoS } from 'mqtt';
 
 export class PriceLoader {
   public device = new ReplaySubject<MqttSubjectData>();
@@ -62,15 +63,17 @@ export class PriceLoader {
         res.on('end', () => {
           try {
             const price = JSON.parse(responseString) as Array<ExtPrice>;
-
+            const dailyAverage = price
+              .map(p => p.NOK_per_kWh * ( 1 + ( this.config.spotVatPercent / 100 ) ))
+              .reduce((a, b) => a + b, 0) / price.length;
             const updated = price
               .map(p => {
                 return {
-                  price: p.NOK_per_kWh,
+                  price: p.NOK_per_kWh * ( 1 + ( this.config.spotVatPercent / 100 ) ),
                   time_start: p.time_start,
                   time_end: p.time_end,
                   monthlyAverage: 0,
-                  dailyAverage: 0
+                  dailyAverage
                 } as ElwizPrice;
               });
             resolve(updated);
@@ -110,7 +113,7 @@ export class PriceLoader {
     const announce = getHassDevice(this.deviceConfig);
     announce.json_attributes_topic = `${announce.stat_t}/attributes`;
     delete announce.dev_cla;
-    const pubOpts = { qos: 2, retain: true };
+    const pubOpts = { qos: 2 as QoS, retain: true };
     this.device.next({ topic: `${haTopic}${this.deviceConfig.stateTopic}/config`, announce: JSON.stringify(announce), pubOpts });
     this.loadMonth(new Date())
       .then(prices => this.priceData.next(prices))

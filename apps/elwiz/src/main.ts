@@ -104,31 +104,35 @@ initModels(config, logger)
         }
       });
 
+    priceLoader.device
+      .subscribe(config => {
+        mqtt.announce(config.topic, config.announce, config.pubOpts);
+      });
     priceLoader.priceData
       .subscribe(async prices => {
-        const sum = prices.map(p => p.price).reduce((a, b) => a + b, 0);
-        const dailyAverage = sum / prices.length;
-        const updated = prices.map(p => ( { ...p, dailyAverage } ));
-        await addPrices(updated, logger);
+        await addPrices(prices, logger);
+        models.Price.findAll({ where: { time_start: { [ Op.gte ]: startOfDay(new Date()) } } })
+          .then(prices => {
+            const price = prices.find(p => isThisHour(p.getDataValue('time_start')));
+            if ( price ) {
+              announcePrice(price);
+            }
+          })
+          .catch(err => logger.error(err));
       });
 
-    priceLoader.init();
     pulse.init();
 
     const announcePrice = (price: Price) => {
-      mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')));
-      mqtt.announce(`${config.haBaseTopic}/averagePrice`, JSON.stringify(price.getDataValue('dailyAverage')));
-      mqtt.announce(`${config.haBaseTopic}/averageMonthPrice`, JSON.stringify(price.getDataValue('monthlyAverage')));
+      mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')), { qos: 1, retain: true });
+      mqtt.announce(`${config.haBaseTopic}/averagePrice`, JSON.stringify(price.getDataValue('dailyAverage')), { qos: 1, retain: true });
+      mqtt.announce(`${config.haBaseTopic}/averageMonthPrice`, JSON.stringify(price.getDataValue('monthlyAverage')), {
+        qos: 1,
+        retain: true
+      });
     };
 
-    models.Price.findAll({ where: { time_start: { [ Op.gte ]: startOfDay(new Date()) } } })
-      .then(prices => {
-        const price = prices.find(p => isThisHour(p.getDataValue('time_start')));
-        if ( price ) {
-          announcePrice(price);
-        }
-      })
-      .catch(err => logger.error(err));
+    priceLoader.init();
 
     const rebootTibberDevice = () => {
       const schedule = new RecurrenceRule();

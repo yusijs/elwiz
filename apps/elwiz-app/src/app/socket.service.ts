@@ -20,6 +20,9 @@ const KEYS = [
   'currentL3',
   'lastMeterConsumption',
   'accumulatedConsumptionLastHour',
+  'price',
+  'averagePrice',
+  'averageMonthPrice'
 ] as const;
 
 @Injectable()
