@@ -131,8 +131,8 @@ initModels(config, logger)
 
       const announcePrice = (price: Price, prices?: Array<Price>) => {
         mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')), { qos: 1, retain: true });
-        mqtt.announce(`${config.haBaseTopic}/averagePrice`, JSON.stringify(price.getDataValue('dailyAverage')), { qos: 1, retain: true });
-        mqtt.announce(`${config.haBaseTopic}/averageMonthPrice`, JSON.stringify(price.getDataValue('monthlyAverage')), {
+        mqtt.announce(`${config.haBaseTopic}/priceAvg`, JSON.stringify(price.getDataValue('dailyAverage')), { qos: 1, retain: true });
+        mqtt.announce(`${config.haBaseTopic}/priceAvgMonth`, JSON.stringify(price.getDataValue('monthlyAverage')), {
           qos: 1,
           retain: true
         });

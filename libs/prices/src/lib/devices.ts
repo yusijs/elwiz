@@ -14,21 +14,21 @@ export const getDevices = (config: ElwizConfig): Array<DeviceConfig> => {
     },
     {
       haBaseTopic: config.haBaseTopic,
-      name: 'Price',
+      name: 'Average price',
       uniqueId: 'elwiz_price_average',
       devClass: 'monetary',
       staClass: 'total',
       unitOfMeasurement: config.priceCurrency,
-      stateTopic: 'price'
+      stateTopic: 'priceAvg'
     },
     {
       haBaseTopic: config.haBaseTopic,
-      name: 'Price',
+      name: 'Average price month',
       uniqueId: 'elwiz_price_average_month',
       devClass: 'monetary',
       staClass: 'total',
       unitOfMeasurement: config.priceCurrency,
-      stateTopic: 'price'
+      stateTopic: 'priceAvgMonth'
     }
   ];
 };
