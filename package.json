@@ -5,7 +5,7 @@
   "scripts": {
     "start": "nx serve",
     "build": "nx run-many --target=build --projects=elwiz,elwiz-app",
-    "build:docker": "docker build . -t 192.168.86.38:5000/elwiz:latest",
+    "build:docker": "docker build . -t 192.168.86.38:5000/elwiz:latest && docker push 192.168.86.38:5000/elwiz:latest",
     "test": "nx test"
   },
   "private": true,

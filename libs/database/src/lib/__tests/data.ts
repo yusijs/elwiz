@@ -82,7 +82,8 @@ export const priceData: Array<ElwizPrice> = range.flatMap(r => {
         price: Math.random() * 1000,
         monthlyAverage: 0,
         dailyAverage: 0,
-      };
+        priceLevel: 'NORMAL'
+      } as ElwizPrice;
     });
   const avg = arr.map(v => v.price).reduce((a, b) => a + b, 0) / arr.length;
   return arr.map(v => ( { ...v, dailyAverage: avg, monthlyAverage: 0 } ));
