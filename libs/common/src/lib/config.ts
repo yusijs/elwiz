@@ -20,6 +20,20 @@ type PubOpts = {
   retain?: boolean;
 }
 
+type Features = {
+  api: boolean;
+  prices: boolean;
+  scheduledReboot: boolean;
+  mqttPublish: boolean;
+}
+
+export const defaultFeatures: Features = {
+  api: true,
+  prices: true,
+  scheduledReboot: true,
+  mqttPublish: true
+};
+
 export interface ElwizConfig {
   mqttBroker: string;
   brokerPort: number;
@@ -65,4 +79,5 @@ export interface ElwizConfig {
   // database: 'sqlite' | 'mysql' | 'postgres' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle';
   // sqlite: SqliteConnection;
   database: DatabaseConnection;
+  features: Features;
 }

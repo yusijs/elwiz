@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import * as mqtt from 'paho-mqtt';
 import { BehaviorSubject, combineLatest, filter, map, Observable, ReplaySubject } from 'rxjs';
 import { MultiChart } from './models';
+import { HttpClient } from '@angular/common/http';
+import { ElwizConfig } from '@elwiz/common';
 
 export type Data = {
   path: string;
@@ -27,7 +29,8 @@ const KEYS = [
 
 @Injectable()
 export class SocketService {
-  private socket = new mqtt.Client('192.168.86.38', 9001, '/', 'elwiz-app');
+  private http = inject(HttpClient);
+  private socket!: mqtt.Client;
   private stream$ = new ReplaySubject<Data>();
   public data$ = this.stream$.asObservable();
   private error$ = new ReplaySubject<mqtt.MQTTError>();
@@ -61,7 +64,16 @@ export class SocketService {
     }));
 
   constructor() {
-    this.stream$.subscribe(console.log);
+    this.init()
+      .subscribe(config => this.initSocket(config));
+  }
+
+  init() {
+    return this.http.get<ElwizConfig>(`/api/config`);
+  }
+
+  private initSocket(config: ElwizConfig) {
+    this.socket = new mqtt.Client('192.168.86.38', 9001, '/', 'elwiz-app');
     this.connect();
     this.socket.onMessageArrived = message => {
       const value = message.payloadString as unknown as number;

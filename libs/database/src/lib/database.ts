@@ -59,7 +59,7 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
       sequelize, modelName: 'List2', hooks: list2Hooks
     });
     List3Data.init(List3Attributes, { sequelize, modelName: 'List3', hooks: list3Hooks });
-    await Price.sync({ force: true });
+    await Price.sync();
     await OnlineStatus.sync({});
     await List1Data.sync({});
     await List2Data.sync({});

@@ -1,7 +1,9 @@
 import { Component, Input } from '@angular/core';
 import { Color, NgxChartsModule, ScaleType } from '@swimlane/ngx-charts';
 import { MultiChart, Series } from './models';
-import { DecimalPipe, JsonPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
+
+const numberFormatter = new Intl.NumberFormat('no', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
 @Component({
   standalone: true,
@@ -20,6 +22,7 @@ import { DecimalPipe, JsonPipe } from '@angular/common';
         [results]="currentConsumption"
         [legend]="false"
         [min]="0"
+        [valueFormatting]="formatConsumption"
         [max]="30"
         units="kW"></ngx-charts-gauge>
 
@@ -42,7 +45,6 @@ import { DecimalPipe, JsonPipe } from '@angular/common';
   `,
   imports: [
     NgxChartsModule,
-    JsonPipe,
     DecimalPipe
   ]
 })
@@ -58,4 +60,8 @@ export class CurrentComponent {
     selectable: true,
     group: ScaleType.Linear
   };
+
+  formatConsumption(value: number) {
+    return numberFormatter.format(value);
+  }
 }

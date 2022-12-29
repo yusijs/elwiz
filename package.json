@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "start": "nx serve",
-    "build": "nx run elwiz:build",
+    "build": "nx run-many --target=build --projects=elwiz,elwiz-app",
     "build:docker": "docker build . -t 192.168.86.38:5000/elwiz:latest",
     "test": "nx test"
   },

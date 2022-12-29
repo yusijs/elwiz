@@ -5,6 +5,11 @@ import { Attributes, ModelAttributes } from 'sequelize/types/model';
 import { endOfMonth, startOfMonth } from 'date-fns';
 
 export class Price extends Model<ElwizPrice> {
+  declare public time_start: Date;
+  declare public time_end: Date;
+  declare public price: number;
+  declare public dailyAverage: number;
+  declare public monthlyAverage: number;
 }
 
 

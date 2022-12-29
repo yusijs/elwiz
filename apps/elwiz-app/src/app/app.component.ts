@@ -1,4 +1,3 @@
-import { RouterModule } from '@angular/router';
 import { Component, inject, LOCALE_ID } from '@angular/core';
 import { SocketService } from './socket.service';
 import { map, Observable } from 'rxjs';
@@ -14,7 +13,7 @@ registerLocaleData(localeNo);
 
 @Component({
   standalone: true,
-  imports: [ RouterModule, AsyncPipe, DecimalPipe, JsonPipe, DatePipe, MatToolbarModule, MatIconModule, CurrentComponent, TitleCasePipe, NgIf ],
+  imports: [ AsyncPipe, DecimalPipe, JsonPipe, DatePipe, MatToolbarModule, MatIconModule, CurrentComponent, TitleCasePipe, NgIf ],
   selector: 'elwiz-root',
   templateUrl: './app.component.html',
   styleUrls: [ './app.component.scss' ],

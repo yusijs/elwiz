@@ -15,7 +15,7 @@ export const List1Attributes = {
     allowNull: false
   },
   hex: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   }
 };
@@ -139,6 +139,38 @@ export const list2Hooks: Partial<ModelHooks<List2Data, Attributes<List2Data>>> =
 };
 
 export class List3Data extends Model<WithHex<Omit<List3, 'type'>>> {
+  declare public power: number;
+  declare public minPower: number;
+  declare public maxPower: number;
+  declare public powerProduction: number;
+  declare public powerReactive: number;
+  declare public powerProductionReactive: number;
+  declare public currentL1: number;
+  declare public currentL2: number;
+  declare public currentL3: number;
+  declare public voltagePhase1: number;
+  declare public voltagePhase2: number;
+  declare public voltagePhase3: number;
+  declare public lastMeterConsumption: number;
+  declare public lastMeterProduction: number;
+  declare public lastMeterConsumptionReactive: number;
+  declare public lastMeterProductionReactive: number;
+  declare public accumulatedConsumptionLastHour: number;
+  declare public accumulatedConsumption: number;
+  declare public accumulatedProductionLastHour: number;
+  declare public accumulatedProduction: number;
+  declare public customerPrice: number;
+  declare public lastHourCost: number;
+  declare public spotPrice: number;
+  declare public peakConsumptionSinceMidnight: number;
+  declare public lowestConsumptionSinceMidnight: number;
+  declare public date: Date;
+  declare public meterDate: Date;
+  declare public hex: string;
+  declare public weekDay: string;
+  declare public meterVersion: string;
+  declare public meterId: string;
+  declare public meterType: string;
 }
 
 export const List3Attributes = {
@@ -147,7 +179,7 @@ export const List3Attributes = {
     allowNull: false
   },
   hex: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   weekDay: {
@@ -270,6 +302,12 @@ export const List3Attributes = {
     type: DataTypes.DATE,
     allowNull: true
   },
+  peakConsumptionSinceMidnight: {
+    type: DataTypes.FLOAT
+  },
+  lowestConsumptionSinceMidnight: {
+    type: DataTypes.FLOAT
+  }
 };
 
 export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> = {
@@ -277,9 +315,10 @@ export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> =
     if ( !list ) {
       console.error('List3 value is undefined', list);
     }
-    const current = <Date>list.getDataValue('createdAt');
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const current = list.date;
     const hr = startOfDay(current);
-    const rest = await List3Data.findAll({ where: { createdAt: { [ Op.gte ]: hr } }, order: [ [ 'createdAt', 'DESC' ] ] });
+    const rest = await List3Data.findAll({ where: { date: { [ Op.gte ]: hr } }, order: [ [ 'date', 'DESC' ] ] });
     const previous = await List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] });
     if ( previous ) {
       const lastMeterConsumption = previous.getDataValue('lastMeterConsumption');
@@ -294,12 +333,11 @@ export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> =
       list.setDataValue('accumulatedConsumption', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);
       list.setDataValue('accumulatedProduction', list.getDataValue('lastMeterProduction') - lastMeterProduction);
     }
-    const peak = rest.map(e => e.getDataValue('peakConsumptionSinceMidnight') ?? 0);
-    const bottom = rest.map(e => e.getDataValue('lowestConsumptionSinceMidnight') ?? 0);
-    const max = Math.max(...peak, list.getDataValue('peakConsumptionSinceMidnight') ?? 0);
-    const min = Math.min(...bottom, list.getDataValue('lowestConsumptionSinceMidnight') ?? 0);
+    const consumption = rest.map(e => e.getDataValue('accumulatedConsumptionLastHour') ?? 0);
+    const max = Math.max(...consumption, list.getDataValue('peakConsumptionSinceMidnight') ?? 0);
+    const min = Math.min(...consumption, list.getDataValue('lowestConsumptionSinceMidnight') ?? 0);
     list.setDataValue('peakConsumptionSinceMidnight', max);
-    list.setDataValue('minPower', min);
+    list.setDataValue('lowestConsumptionSinceMidnight', min);
   }
 };
 

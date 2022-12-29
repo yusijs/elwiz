@@ -27,11 +27,18 @@ export class MqttHandler {
   }
 
   public announce(topic: string, data: string, pubOpts: IClientPublishOptions = {}) {
-    this.logger.debug(`mqtt:
+    if ( this.config.features.mqttPublish ?? true ) {
+      this.logger.debug(`mqtt:
 topic: ${topic}
 data: ${data}
 opts: ${pubOpts}`);
-    this.client.publish(topic, data, pubOpts);
+      this.client.publish(topic, data, pubOpts);
+    } else {
+      this.logger.info(`mqtt:
+topic: ${topic}
+data: ${data}
+opts: ${pubOpts}`);
+    }
   }
 
   public init() {

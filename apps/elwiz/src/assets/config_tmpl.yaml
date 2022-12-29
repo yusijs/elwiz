@@ -73,6 +73,17 @@ database:
   storage: path/to/database.sqlite
   dialect: sqlite
 
+# Features to enable for application
+features:
+  # Should an API be started along with the application
+  api: true
+  # Should we load prices
+  prices: true
+  # Should we reboot tibber pulse on a schedule (**:45, **:55). Some pulse devices are unstable, this reduces the dataloss in some cases.
+  scheduledReboot: true
+  # Should we publish to mqtt, or just log information out
+  mqttPublish: true
+
 # The rest of the configuration is only valid
 # for the "getprices" program
 

@@ -1,7 +1,7 @@
 import { Pulse } from '@elwiz/pulse';
 import { join } from 'path';
 import * as yaml from 'yamljs';
-import { ElwizConfig, ElwizLogger, List2 } from '@elwiz/common';
+import { defaultFeatures, ElwizConfig, ElwizLogger, List2 } from '@elwiz/common';
 import { MqttHandler } from '@elwiz/mqtt';
 import { IClientOptions } from 'mqtt';
 import { PriceLoader } from '@elwiz/prices';
@@ -9,10 +9,14 @@ import { RecurrenceRule, scheduleJob } from 'node-schedule';
 import { addPrices, initModels, Price } from '@elwiz/database';
 import { isThisHour, startOfDay } from 'date-fns';
 import { Op } from 'sequelize';
+import { app } from './app/api';
+import { state } from './app/state';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
+config.features = config.features ?? defaultFeatures;
 
 const logger = new ElwizLogger(config).logger;
+
 
 initModels(config, logger)
   .then(models => {
@@ -23,6 +27,8 @@ initModels(config, logger)
     update -> request update (need update-url)
      */
 
+
+    state.db = models;
 
     const mqtt = new MqttHandler(config, logger);
     mqtt.init();
@@ -42,7 +48,7 @@ initModels(config, logger)
       .on('status', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
         mqtt.announce(event.topic, event.announce, event.pubOpts);
 
-        if (event.topic === config.pubStatus) {
+        if ( event.topic === config.pubStatus ) {
           const data = JSON.parse(event.announce);
           models.PulseStatus.create(data)
             .catch(err => logger.error('Failed to create PulseStatus', err))
@@ -91,7 +97,6 @@ initModels(config, logger)
       .on('list3', async (data: typeof models.List3Data) => {
         try {
           const saved = await models.List3Data.create(data);
-          mqtt.announce(`${config.haBaseTopic}/timestamp`, saved.getDataValue('date'), config.list3Opts);
           mqtt.announce(`${config.haBaseTopic}/lastMeterConsumption`, saved.getDataValue('lastMeterConsumption').toString(), config.list3Opts);
           mqtt.announce(`${config.haBaseTopic}/accumulatedConsumptionLastHour`, saved.getDataValue('accumulatedConsumptionLastHour').toString(), config.list3Opts);
           mqtt.announce(`${config.haBaseTopic}/accumulatedProductionLastHour`, saved.getDataValue('accumulatedProductionLastHour').toString(), config.list3Opts);
@@ -99,41 +104,90 @@ initModels(config, logger)
           mqtt.announce(`${config.haBaseTopic}/accumulatedProduction`, saved.getDataValue('accumulatedProduction').toString(), config.list3Opts);
           logger.verbose('Inserted List3 data');
         } catch ( err ) {
-          logger.error('Failed to insert list3Data');
+          logger.error('Failed to insert list3Data', err);
           logger.error(err);
         }
       });
 
-    priceLoader.device
-      .subscribe(config => {
-        mqtt.announce(config.topic, config.announce, config.pubOpts);
-      });
-    priceLoader.priceData
-      .subscribe(async prices => {
-        await addPrices(prices, logger);
-        models.Price.findAll({ where: { time_start: { [ Op.gte ]: startOfDay(new Date()) } } })
-          .then(prices => {
-            const price = prices.find(p => isThisHour(p.getDataValue('time_start')));
-            if ( price ) {
-              announcePrice(price);
-            }
-          })
-          .catch(err => logger.error(err));
+
+    const prices = async () => {
+      priceLoader.device
+        .subscribe(config => {
+          mqtt.announce(config.topic, config.announce, config.pubOpts);
+        });
+      priceLoader.priceData
+        .subscribe(async prices => {
+          await addPrices(prices, logger);
+          models.Price.findAll({ where: { time_start: { [ Op.gte ]: startOfDay(new Date()) } } })
+            .then(prices => {
+              const price = prices.find(p => isThisHour(p.getDataValue('time_start')));
+              if ( price ) {
+                announcePrice(price, prices);
+              }
+            })
+            .catch(err => logger.error(err));
+        });
+
+
+      const announcePrice = (price: Price, prices?: Array<Price>) => {
+        mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')), { qos: 1, retain: true });
+        mqtt.announce(`${config.haBaseTopic}/averagePrice`, JSON.stringify(price.getDataValue('dailyAverage')), { qos: 1, retain: true });
+        mqtt.announce(`${config.haBaseTopic}/averageMonthPrice`, JSON.stringify(price.getDataValue('monthlyAverage')), {
+          qos: 1,
+          retain: true
+        });
+        if ( prices && prices.length > 0 ) {
+          const raw = prices.map(p => ( { from: p.time_start, to: p.time_end, price: p.price } ));
+          mqtt.announce(`${config.haBaseTopic}/price/attributes`, JSON.stringify(raw), { qos: 1, retain: true });
+        }
+      };
+
+      priceLoader.init();
+
+
+      const loadScheduledPrices = () => {
+        const runSchedule = new RecurrenceRule();
+        runSchedule.minute = 5;
+
+        return scheduleJob(runSchedule, function () {
+          logger.verbose('Loading prices');
+          priceLoader.load()
+            .catch(ex => logger.error('Failed to load prices: ', ex));
+        });
+      };
+
+      const sendPricesMqtt = () => {
+        const runSchedule = new RecurrenceRule();
+        runSchedule.minute = 0;
+        runSchedule.second = 30;
+
+        scheduleJob(runSchedule, function () {
+          const now = new Date();
+          models.Price.findOne({ where: { time_start: { lt: now }, time_end: { gt: now } } })
+            .then(price => {
+              if ( price ) {
+                logger.debug(`Sending price for ${now} to home assistant`);
+                logger.verbose('Price to send: ', price);
+                announcePrice(price);
+              } else {
+                logger.info('No price found for current period');
+              }
+            });
+        });
+      };
+
+      loadScheduledPrices();
+      sendPricesMqtt();
+
+      const runSchedule = new RecurrenceRule();
+      runSchedule.hour = config.scheduleHours;
+      runSchedule.minute = config.scheduleMinutes;
+      scheduleJob(runSchedule, function () {
+        priceLoader.load()
+          .catch(ex => logger.error('Failed to load prices: ', ex));
       });
 
-    pulse.init();
-
-    const announcePrice = (price: Price) => {
-      mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')), { qos: 1, retain: true });
-      mqtt.announce(`${config.haBaseTopic}/averagePrice`, JSON.stringify(price.getDataValue('dailyAverage')), { qos: 1, retain: true });
-      mqtt.announce(`${config.haBaseTopic}/averageMonthPrice`, JSON.stringify(price.getDataValue('monthlyAverage')), {
-        qos: 1,
-        retain: true
-      });
     };
-
-    priceLoader.init();
-
     const rebootTibberDevice = () => {
       const schedule = new RecurrenceRule();
       schedule.minute = 45;
@@ -147,50 +201,22 @@ initModels(config, logger)
       scheduleJob(schedule55, cb);
     };
 
-    rebootTibberDevice();
 
-    const loadScheduledPrices = () => {
-      const runSchedule = new RecurrenceRule();
-      runSchedule.minute = 5;
+    pulse.init();
 
-      return scheduleJob(runSchedule, function () {
-        logger.verbose('Loading prices');
-        priceLoader.load()
-          .catch(ex => logger.error('Failed to load prices: ', ex));
-      });
-    };
+    const features = config.features;
 
-    const sendPricesMqtt = () => {
-      const runSchedule = new RecurrenceRule();
-      runSchedule.minute = 0;
-      runSchedule.second = 30;
+    if ( features.prices ) {
+      prices();
+    }
 
-      scheduleJob(runSchedule, function () {
-        const now = new Date();
-        models.Price.findOne({ where: { time_start: { lt: now }, time_end: { gt: now } } })
-          .then(price => {
-            if ( price ) {
-              logger.debug(`Sending price for ${now} to home assistant`);
-              logger.verbose('Price to send: ', price);
-              announcePrice(price);
-            } else {
-              logger.info('No price found for current period');
-            }
-          });
-      });
-    };
+    if ( features.scheduledReboot ) {
+      rebootTibberDevice();
+    }
 
-    loadScheduledPrices();
-    sendPricesMqtt();
 
-    if (config.runNodeSchedule) {
-      const runSchedule = new RecurrenceRule();
-      runSchedule.hour = config.scheduleHours;
-      runSchedule.minute = config.scheduleMinutes;
-      scheduleJob(runSchedule, function () {
-        priceLoader.load()
-          .catch(ex => logger.error('Failed to load prices: ', ex));
-      });
+    if ( features.api ) {
+      app.listen(8081, () => console.log('Listening on 8081'));
     }
 
   });

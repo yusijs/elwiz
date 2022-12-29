@@ -1,24 +1,16 @@
 import { ElwizConfig, ElwizPrice, ExtPrice, MqttSubjectData } from '@elwiz/common';
 
 import { eachDayOfInterval, endOfMonth, startOfMonth } from 'date-fns';
-import { DeviceConfig, getHassDevice } from '@elwiz/pulse';
+import { getHassDevice } from '@elwiz/pulse';
 import { Logger } from 'winston';
 import { request } from 'https';
 import { ReplaySubject } from 'rxjs';
 import { QoS } from 'mqtt';
+import { getDevices } from './devices';
 
 export class PriceLoader {
   public device = new ReplaySubject<MqttSubjectData>();
   public priceData = new ReplaySubject<Array<ElwizPrice>>();
-  private deviceConfig = {
-    haBaseTopic: this.config.haBaseTopic,
-    name: 'Price',
-    uniqueId: 'elwiz_electricity_price',
-    devClass: null,
-    staClass: 'total',
-    unitOfMeasurement: this.config.priceCurrency,
-    stateTopic: 'price'
-  } as DeviceConfig;
 
   constructor(private config: ElwizConfig, private logger: Logger) {
   }
@@ -68,12 +60,14 @@ export class PriceLoader {
               .reduce((a, b) => a + b, 0) / price.length;
             const updated = price
               .map(p => {
+                const price = p.NOK_per_kWh * ( 1 + ( this.config.spotVatPercent / 100 ) );
                 return {
-                  price: p.NOK_per_kWh * ( 1 + ( this.config.spotVatPercent / 100 ) ),
+                  price,
                   time_start: p.time_start,
                   time_end: p.time_end,
                   monthlyAverage: 0,
-                  dailyAverage
+                  dailyAverage,
+                  priceLevel: this.getPriceLevel(price, dailyAverage)
                 } as ElwizPrice;
               });
             resolve(updated);
@@ -110,11 +104,14 @@ export class PriceLoader {
   public init() {
     const haTopic = 'homeassistant/sensor/ElWiz/';
 
-    const announce = getHassDevice(this.deviceConfig);
-    announce.json_attributes_topic = `${announce.stat_t}/attributes`;
-    delete announce.dev_cla;
-    const pubOpts = { qos: 2 as QoS, retain: true };
-    this.device.next({ topic: `${haTopic}${this.deviceConfig.stateTopic}/config`, announce: JSON.stringify(announce), pubOpts });
+    getDevices(this.config)
+      .forEach(dev => {
+        const announce = getHassDevice(dev);
+        announce.json_attributes_topic = `${announce.stat_t}/attributes`;
+        delete announce.dev_cla;
+        const pubOpts = { qos: 2 as QoS, retain: true };
+        this.device.next({ topic: `${haTopic}${dev.stateTopic}/config`, announce: JSON.stringify(announce), pubOpts });
+      });
     this.loadMonth(new Date())
       .then(prices => this.priceData.next(prices))
       .catch(ex => this.logger.error('Failed to load prices: ', ex));
