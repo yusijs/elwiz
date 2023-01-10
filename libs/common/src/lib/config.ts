@@ -37,6 +37,7 @@ export const defaultFeatures: Features = {
 export interface ElwizConfig {
   mqttBroker: string;
   brokerPort: number;
+  brokerWsPort?: number;
   userName: string;
   password?: any;
   topic: string;

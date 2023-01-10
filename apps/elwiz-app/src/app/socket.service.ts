@@ -62,10 +62,14 @@ export class SocketService {
         };
       });
     }));
+  private config!: ElwizConfig;
 
   constructor() {
     this.init()
-      .subscribe(config => this.initSocket(config));
+      .subscribe(config => {
+        this.config = config;
+        this.initSocket(config);
+      });
   }
 
   init() {
@@ -73,7 +77,7 @@ export class SocketService {
   }
 
   private initSocket(config: ElwizConfig) {
-    this.socket = new mqtt.Client('192.168.86.38', 9001, '/', 'elwiz-app');
+    this.socket = new mqtt.Client(config.mqttBroker, config.brokerWsPort ?? 9001, '/', 'elwiz-app');
     this.connect();
     this.socket.onMessageArrived = message => {
       const value = message.payloadString as unknown as number;
@@ -110,7 +114,7 @@ export class SocketService {
   private connect() {
     this.socket.connect({
       onSuccess: () => {
-        this.socket.subscribe('elwiz/#');
+        this.socket.subscribe(this.config.haBaseTopic);
       },
       onFailure: err => this.error$.next(err),
       reconnect: false
