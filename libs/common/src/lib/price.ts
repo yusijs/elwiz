@@ -1,8 +1,22 @@
-export type PriceInfo = {
-  date?: string;
-  startTime: string;
-  endTime: string;
+export type PriceLevel = 'VERY_CHEAP' |
+  'CHEAP' |
+  'EXPENSIVE' |
+  'VERY_EXPENSIVE' |
+  'NORMAL';
+
+export type ExtPrice = {
+  NOK_per_kWh: number;
+  EUR_per_kWh: number;
+  EXR: number;
+  time_start: Date;
+  time_end: Date;
+}
+
+export type ElwizPrice = {
   price: number;
-  spotPrice?: number;
-  customerPrice?: number;
+  time_start: Date;
+  time_end: Date;
+  dailyAverage: number;
+  monthlyAverage: number;
+  priceLevel: PriceLevel;
 }

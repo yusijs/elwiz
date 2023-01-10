@@ -1,90 +1,119 @@
-import { ElwizConfig, PriceInfo } from '@elwiz/common';
+import { ElwizConfig, ElwizPrice, ExtPrice, MqttSubjectData } from '@elwiz/common';
 
-import { addDays, format, parseISO, subDays } from 'date-fns';
-import { NordPoolResponseObject } from './nordpool';
-import { EventEmitter } from 'events';
-import { DeviceConfig, getHassDevice } from '@elwiz/pulse';
-import { Price } from '@elwiz/database';
+import { eachDayOfInterval, endOfMonth, startOfMonth } from 'date-fns';
+import { getHassDevice } from '@elwiz/pulse';
 import { Logger } from 'winston';
-
+import { request } from 'https';
+import { ReplaySubject } from 'rxjs';
+import { QoS } from 'mqtt';
+import { getDevices } from './devices';
 
 export class PriceLoader {
-  public price = new EventEmitter();
-  public loaded = new EventEmitter();
-  private readonly daysInMonth = [ undefined, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
-  private oneDayPrices: Array<PriceInfo> = [];
-  private deviceConfig = {
-    haBaseTopic: this.config.haBaseTopic,
-    name: 'Price',
-    uniqueId: 'elwiz_electricity_price',
-    devClass: null,
-    staClass: 'total',
-    unitOfMeasurement: this.config.priceCurrency,
-    stateTopic: 'elwizElectricityPrice'
-  } as DeviceConfig;
+  public device = new ReplaySubject<MqttSubjectData>();
+  public priceData = new ReplaySubject<Array<ElwizPrice>>();
 
   constructor(private config: ElwizConfig, private logger: Logger) {
   }
 
-  get nordPoolUri() {
-    return `https://www.nordpoolgroup.com/api/marketdata/page/10/${this.config.priceCurrency}`;
+  private apiDomainMap = {
+    NO: 'https://www.hvakosterstrommen.no',
+    SE: 'https://www.elprisetjustnu.se',
+    DK: 'https://www.elprisenligenu.dk'
+  };
+
+  private getRequestOptions(year: string, month: string, day: string, priceArea: string) {
+    const countryCode = priceArea.substring(0, 2) as keyof typeof this.apiDomainMap;
+    const opts = {
+      host: this.apiDomainMap[ countryCode ],
+      path: `/api/v1/prices/${year}/${month}-${day}_${priceArea}.json`
+    };
+    return new URL(`${opts.host}${opts.path}`);
   }
 
-  public async load(date?: Date) {
-    this.oneDayPrices = [];
-    if ( this.config.keepDays ) {
-      await this.retireDays(this.config.keepDays);
-    }
-    if ( !date ) {
-      date = addDays(new Date(), 1);
-    }
-    const fetchDate = format(date, 'yyyy-MM-dd');
-    const priceForDate = await Price.findAll({ where: { date: fetchDate } });
+  private getDate(d: Date) {
+    const year = d.getFullYear().toString();
+    const month = `${d.getMonth() + 1}`.padStart(2, '0');
+    const day = `${d.getDate()}`.padStart(2, '0');
+    return { year, month, day };
+  }
 
-    if ( priceForDate?.length > 0 ) {
-      await this.announce(priceForDate as unknown as PriceInfo[]);
-    } else {
-      const url = `${this.nordPoolUri}/${fetchDate}`;
-      const req = await fetch(url, {
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'text/json',
+  private async loadPrice(d: Date) {
+    const { year, month, day } = this.getDate(d);
+    const area = this.config.priceRegion;
+    const opts = this.getRequestOptions(year, month, day, area);
+    return new Promise<Array<ElwizPrice>>((resolve, reject) => {
+      const req = request(opts, (res) => {
+        let responseString = '';
+        const code = res.statusCode!;
+        if ( code >= 400 ) {
+          resolve([]);
+          req.end();
+          return;
         }
+        res.on('data', chunk => responseString += chunk);
+        res.on('error', err => reject(err));
+        res.on('end', () => {
+          try {
+            const price = JSON.parse(responseString) as Array<ExtPrice>;
+            const dailyAverage = price
+              .map(p => p.NOK_per_kWh * ( 1 + ( this.config.spotVatPercent / 100 ) ))
+              .reduce((a, b) => a + b, 0) / price.length;
+            const updated = price
+              .map(p => {
+                const price = p.NOK_per_kWh * ( 1 + ( this.config.spotVatPercent / 100 ) );
+                return {
+                  price,
+                  time_start: p.time_start,
+                  time_end: p.time_end,
+                  monthlyAverage: 0,
+                  dailyAverage,
+                  priceLevel: this.getPriceLevel(price, dailyAverage)
+                } as ElwizPrice;
+              });
+            resolve(updated);
+          } catch {
+            this.logger.warn('Failed to load price for', d);
+          }
+        });
       });
-      const body: NordPoolResponseObject = await req.json();
-      const rows = body.data.Rows;
-      for ( let i = 0; i < 24; i++ ) {
-        const row = rows[ i ];
-        const price = row.Columns[ this.config.priceRegion ].Value;
-        const start = parseISO(row.StartTime);
-        const end = parseISO(row.EndTime);
-        const priceObj: PriceInfo = {
-          date: format(end, `yyyy-MM-dd`),
-          startTime: format(start, `yyyy-MM-dd HH:mm:ss`),
-          endTime: format(end, `yyyy-MM-dd HH:mm:ss`),
-          price: Number(price.toString().replace(/ /g, '').replace(/(\d),/g, '.$1'))
-        };
-        if ( this.config.computePrices )
-          this.oneDayPrices.push(this.computePrice(priceObj));
-        else
-          this.oneDayPrices.push(priceObj);
-      }
-
-      this.announce(this.oneDayPrices);
-
-      this.loaded.emit('loaded', this.oneDayPrices);
-    }
+      req.end();
+    });
   }
+
+  public async load(d: Date = new Date()): Promise<Array<ElwizPrice>> {
+    const price = await this.loadPrice(d);
+    this.priceData.next(price);
+    return price;
+  }
+
+  public async loadMonth(d: Date) {
+    const start = startOfMonth(d);
+    const end = endOfMonth(d);
+    const interval: Interval = { start, end };
+    const range = eachDayOfInterval(interval);
+    let prices: Array<ElwizPrice> = [];
+    for ( const date of range ) {
+      this.logger.info(`Loading price for ${date}`);
+      const price = await this.loadPrice(date);
+      prices = [ ...prices, ...price ];
+    }
+    return prices;
+  }
+
 
   public init() {
     const haTopic = 'homeassistant/sensor/ElWiz/';
 
-    const announce = getHassDevice(this.deviceConfig);
-    announce.json_attributes_topic = `${announce.stat_t}/attributes`;
-    delete announce.dev_cla;
-    const pubOpts = { qos: 2, retain: true };
-    this.price.emit('announce', { topic: `${haTopic}${this.deviceConfig.stateTopic}/config`, announce: JSON.stringify(announce), pubOpts });
-    this.load(new Date())
+    getDevices(this.config)
+      .forEach(dev => {
+        const announce = getHassDevice(dev);
+        announce.json_attributes_topic = `${announce.stat_t}/attributes`;
+        delete announce.dev_cla;
+        const pubOpts = { qos: 2 as QoS, retain: true };
+        this.device.next({ topic: `${haTopic}${dev.stateTopic}/config`, announce: JSON.stringify(announce), pubOpts });
+      });
+    this.loadMonth(new Date())
+      .then(prices => this.priceData.next(prices))
       .catch(ex => this.logger.error('Failed to load prices: ', ex));
   }
 
@@ -100,69 +129,4 @@ export class PriceLoader {
     return isVeryCheap ? 'VERY_CHEAP' : isCheap ? 'CHEAP' : isExpensive ? 'EXPENSIVE' : isVeryExpensive ? 'VERY_EXPENSIVE' : 'NORMAL';
   }
 
-  private announce(oneDayPrices: Array<PriceInfo>) {
-
-    const topic = `elwiz/sensor/${this.deviceConfig.stateTopic}`;
-    const attrsTopic = `${topic}/attributes`;
-
-    const date = new Date();
-    date.setMinutes(0);
-    date.setSeconds(0);
-    const isoString = date.toISOString()
-      .replace(/\..+/g, '')
-      .replace(/T\d\d/, 'T09');
-
-
-    const current = oneDayPrices.find(d => d.startTime === isoString);
-
-    if ( !current ) {
-      return;
-    }
-    const curentPrice = current.price * 1.25;
-
-    const state = ( curentPrice / 100 ).toFixed(4);
-    const maxPrice = ( Math.max(...oneDayPrices.map(p => p.price)) * 1.25 ) / 100;
-    const minPrice = ( Math.min(...oneDayPrices.map(p => p.price)) * 1.25 ) / 100;
-    const avgPrice = ( ( oneDayPrices.map(p => p.price).reduce((a, b) => a + b, 0) / oneDayPrices.length ) * 1.25 ) / 100;
-    const priceLevel = this.getPriceLevel(current.price, avgPrice);
-    const attrs = { maxPrice, minPrice, avgPrice, priceLevel };
-
-    const pubOpts = { qos: 2, retain: true };
-    this.price.emit('announce', { topic, announce: state, pubOpts });
-    this.price.emit('announce', { topic: attrsTopic, announce: JSON.stringify(attrs), pubOpts });
-  }
-
-  private async retireDays(days: number) {
-    if ( !days ) {
-      return;
-    }
-    const today = new Date();
-    const deleteOlderThan = subDays(today, days);
-    await Price.destroy({ where: { date: { lt: deleteOlderThan } } });
-  }
-
-  private computePrice(priceObj: { startTime: string; endTime: string; price: number; }) {
-    const {
-      supplierKwhPrice,
-      supplierMonthPrice,
-      supplierVatPercent,
-      spotVatPercent,
-      gridKwhPrice,
-      gridDayPrice,
-      gridVatPercent
-    } = this.config;
-    const month = Number(priceObj.startTime.split('-')[ 1 ]);
-    let supplierPrice = supplierKwhPrice + supplierMonthPrice / this.daysInMonth[ month ]! / 24;
-    supplierPrice += supplierPrice * supplierVatPercent / 100;
-    supplierPrice += priceObj.price + priceObj.price * spotVatPercent / 100;
-    let gridPrice = gridKwhPrice + gridDayPrice / 24;
-    gridPrice += gridDayPrice * gridVatPercent / 100;
-    return {
-      startTime: priceObj.startTime,
-      endTime: priceObj.endTime,
-      price: priceObj.price,
-      spotPrice: priceObj.price,
-      customerPrice: Number(( supplierPrice + gridPrice ).toFixed(4))
-    };
-  }
 }

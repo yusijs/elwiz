@@ -1,18 +1,22 @@
 import { Pulse } from '@elwiz/pulse';
 import { join } from 'path';
 import * as yaml from 'yamljs';
-import { ElwizConfig, ElwizLogger, PriceInfo } from '@elwiz/common';
+import { defaultFeatures, ElwizConfig, ElwizLogger, List2 } from '@elwiz/common';
 import { MqttHandler } from '@elwiz/mqtt';
 import { IClientOptions } from 'mqtt';
 import { PriceLoader } from '@elwiz/prices';
 import { RecurrenceRule, scheduleJob } from 'node-schedule';
-import { addPrices, initModels, List1Data } from '@elwiz/database';
-import { addHours, parseISO, startOfHour } from 'date-fns';
+import { addPrices, initModels, Price } from '@elwiz/database';
+import { isThisHour, startOfDay } from 'date-fns';
 import { Op } from 'sequelize';
+import { app } from './app/api';
+import { state } from './app/state';
 
 const config: ElwizConfig = yaml.load(join(__dirname, 'assets/config.yaml'));
+config.features = config.features ?? defaultFeatures;
 
 const logger = new ElwizLogger(config).logger;
+
 
 initModels(config, logger)
   .then(models => {
@@ -24,32 +28,15 @@ initModels(config, logger)
      */
 
 
+    state.db = models;
+
     const mqtt = new MqttHandler(config, logger);
     mqtt.init();
+    mqtt.status.on('status', async (status: string) => {
+      await models.OnlineStatus.create({ status });
+    });
 
     const pulse = new Pulse(config, logger);
-
-    models.List1Data.addHook('afterCreate', (attributes, options) => {
-      const now = startOfHour(new Date());
-      const next = startOfHour(addHours(now, 1));
-      logger.debug([now.toISOString(), next.toISOString()].join(', '));
-      List1Data.findAll({ where: { createdAt: { [Op.gte]: now.toISOString(), [Op.lt]: next.toISOString() } } })
-        .then(hourlyData => {
-          const consumption = hourlyData.map(d => {
-            return d.getDataValue('power');
-          });
-          const max = Math.max(...consumption);
-          const min = Math.min(...consumption);
-          logger.info(`Min is ${min}, Max is ${max}`);
-        });
-    });
-    models.List3Data.findOne({ order: [['createdAt', 'DESC']] })
-      .then(r => {
-        if (r) {
-          //logger.verbose(`Set lastCumulativePower to ${r.getDataValue('lastCumulativePower')}`);
-          //pulse.lastCumulativePower = r.getDataValue('lastCumulativePower');
-        }
-      });
     const priceLoader = new PriceLoader(config, logger);
 
 
@@ -60,7 +47,8 @@ initModels(config, logger)
     pulse.status
       .on('status', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
         mqtt.announce(event.topic, event.announce, event.pubOpts);
-        if (event.topic === config.pubStatus) {
+
+        if ( event.topic === config.pubStatus ) {
           const data = JSON.parse(event.announce);
           models.PulseStatus.create(data)
             .catch(err => logger.error('Failed to create PulseStatus', err))
@@ -80,40 +68,126 @@ initModels(config, logger)
       .on('list1', (data: typeof models.List1Data) => {
         models.List1Data.create(data)
           .catch(err => logger.error(err))
-          .then(() => logger.verbose('Inserted List1 data'));
+          .then(() => logger.debug('Inserted List1 data'));
       });
     pulse.pulseData
-      .on('list2', (data: typeof models.List2Data) => {
-        models.List2Data.create(data)
-          .catch(err => logger.error(err))
-          .then(() => logger.verbose('Inserted List2 data'));
+      .on('list2', async (data: List2) => {
+        try {
+          const saved = await models.List2Data.create(data);
+          logger.debug('Inserted List2Data');
+          mqtt.announce('meter/list2', JSON.stringify(saved), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/timestamp`, saved.getDataValue('date'), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/power`, ( saved.getDataValue('power') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/maxPower`, ( saved.getDataValue('maxPower') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/minPower`, ( saved.getDataValue('minPower') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/avgPower`, ( saved.getDataValue('avgPower') ?? 0 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase1`, ( saved.getDataValue('voltagePhase1') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase2`, ( saved.getDataValue('voltagePhase2') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/voltagePhase3`, ( saved.getDataValue('voltagePhase3') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL1`, ( saved.getDataValue('currentL1') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL2`, ( saved.getDataValue('currentL2') / 10 ).toString(), config.list2Opts);
+          mqtt.announce(`${config.haBaseTopic}/currentL3`, ( saved.getDataValue('currentL3') / 10 ).toString(), config.list2Opts);
+        } catch ( ex ) {
+          logger.error('Failed to write list2');
+          logger.error(ex);
+          logger.error(JSON.stringify(data, null, 2));
+        }
       });
     pulse.pulseData
-      .on('list3', (data: typeof models.List3Data) => {
-        models.List3Data.create(data)
-          .catch(err => logger.error(err))
-          .then(() => logger.verbose('Inserted List3 data'));
+      .on('list3', async (data: typeof models.List3Data) => {
+        try {
+          const saved = await models.List3Data.create(data);
+          mqtt.announce(`${config.haBaseTopic}/lastMeterConsumption`, saved.getDataValue('lastMeterConsumption').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedConsumptionLastHour`, saved.getDataValue('accumulatedConsumptionLastHour').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedProductionLastHour`, saved.getDataValue('accumulatedProductionLastHour').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedConsumption`, saved.getDataValue('accumulatedConsumption').toString(), config.list3Opts);
+          mqtt.announce(`${config.haBaseTopic}/accumulatedProduction`, saved.getDataValue('accumulatedProduction').toString(), config.list3Opts);
+          logger.verbose('Inserted List3 data');
+        } catch ( err ) {
+          logger.error('Failed to insert list3Data', err);
+          logger.error(err);
+        }
       });
 
-    priceLoader.price
-      .on('announce', (event: { topic: string; announce: string; pubOpts?: IClientOptions }) => {
-        mqtt.announce(event.topic, event.announce, event.pubOpts);
+
+    const prices = async () => {
+      priceLoader.device
+        .subscribe(config => {
+          mqtt.announce(config.topic, config.announce, config.pubOpts);
+        });
+      priceLoader.priceData
+        .subscribe(async prices => {
+          await addPrices(prices, logger);
+          models.Price.findAll({ where: { time_start: { [ Op.gte ]: startOfDay(new Date()) } } })
+            .then(prices => {
+              const price = prices.find(p => isThisHour(p.getDataValue('time_start')));
+              if ( price ) {
+                announcePrice(price, prices);
+              }
+            })
+            .catch(err => logger.error(err));
+        });
+
+
+      const announcePrice = (price: Price, prices?: Array<Price>) => {
+        mqtt.announce(`${config.haBaseTopic}/price`, JSON.stringify(price.getDataValue('price')), { qos: 1, retain: true });
+        mqtt.announce(`${config.haBaseTopic}/priceAvg`, JSON.stringify(price.getDataValue('dailyAverage')), { qos: 1, retain: true });
+        mqtt.announce(`${config.haBaseTopic}/priceAvgMonth`, JSON.stringify(price.getDataValue('monthlyAverage')), {
+          qos: 1,
+          retain: true
+        });
+        if ( prices && prices.length > 0 ) {
+          const raw = prices.map(p => ( { from: p.time_start, to: p.time_end, price: p.price } ));
+          mqtt.announce(`${config.haBaseTopic}/price/attributes`, JSON.stringify(raw), { qos: 1, retain: true });
+        }
+      };
+
+      priceLoader.init();
+
+
+      const loadScheduledPrices = () => {
+        const runSchedule = new RecurrenceRule();
+        runSchedule.minute = 5;
+
+        return scheduleJob(runSchedule, function () {
+          logger.verbose('Loading prices');
+          priceLoader.load()
+            .catch(ex => logger.error('Failed to load prices: ', ex));
+        });
+      };
+
+      const sendPricesMqtt = () => {
+        const runSchedule = new RecurrenceRule();
+        runSchedule.minute = 0;
+        runSchedule.second = 30;
+
+        scheduleJob(runSchedule, function () {
+          const now = new Date();
+          models.Price.findOne({ where: { time_start: { lt: now }, time_end: { gt: now } } })
+            .then(price => {
+              if ( price ) {
+                logger.debug(`Sending price for ${now} to home assistant`);
+                logger.verbose('Price to send: ', price);
+                announcePrice(price);
+              } else {
+                logger.info('No price found for current period');
+              }
+            });
+        });
+      };
+
+      loadScheduledPrices();
+      sendPricesMqtt();
+
+      const runSchedule = new RecurrenceRule();
+      runSchedule.hour = config.scheduleHours;
+      runSchedule.minute = config.scheduleMinutes;
+      scheduleJob(runSchedule, function () {
+        priceLoader.load()
+          .catch(ex => logger.error('Failed to load prices: ', ex));
       });
 
-    priceLoader.loaded
-      .on('loaded', (data: Array<PriceInfo>) => {
-        addPrices(data, logger)
-          .catch(err => logger.error(err));
-      });
-
-
-    models.Price.findOne({ where: { startTime: parseISO('2022-10-15T22:00:00.000Z') } })
-      .catch(err => logger.error(err))
-      .then(p => logger.info(p));
-
-    priceLoader.init();
-    pulse.init();
-
+    };
     const rebootTibberDevice = () => {
       const schedule = new RecurrenceRule();
       schedule.minute = 45;
@@ -127,69 +201,22 @@ initModels(config, logger)
       scheduleJob(schedule55, cb);
     };
 
-    rebootTibberDevice();
 
-    const loadScheduledPrices = () => {
-      const runSchedule = new RecurrenceRule();
-      runSchedule.minute = 5;
+    pulse.init();
 
-      return scheduleJob(runSchedule, function () {
-        logger.verbose('Loading prices');
-        priceLoader.load()
-          .catch(ex => logger.error('Failed to load prices: ', ex));
-      });
-    };
+    const features = config.features;
 
-    const sendPriceToHomeAssistant = () => {
-      const runSchedule = new RecurrenceRule();
-      runSchedule.minute = 2;
+    if ( features.prices ) {
+      prices();
+    }
 
-      scheduleJob(runSchedule, function () {
-        const now = new Date();
-        models.Price.findOne({ where: { startTime: { lt: now }, endTime: { gt: now } } })
-          .then(price => {
-            if (price) {
-              logger.debug(`Sending price for ${now} to home assistant`);
-              logger.verbose('Price to send: ', price);
-            } else {
-              logger.info('No price found for current period');
-            }
-          });
-      });
-    };
+    if ( features.scheduledReboot ) {
+      rebootTibberDevice();
+    }
 
-    loadScheduledPrices();
-    sendPriceToHomeAssistant();
 
-    if (config.runNodeSchedule) {
-      const runSchedule = new RecurrenceRule();
-      runSchedule.hour = config.scheduleHours;
-      runSchedule.minute = config.scheduleMinutes;
-      scheduleJob(runSchedule, function () {
-        priceLoader.load()
-          .catch(ex => logger.error('Failed to load prices: ', ex));
-      });
+    if ( features.api ) {
+      app.listen(8081, () => console.log('Listening on 8081'));
     }
 
   });
-
-// A "kill -INT <process ID> will save the last cumulative power before killing the process
-// Likewise a <Ctrl this.C> will do
-process.on('SIGINT', () => {
-  logger.info('\nGot SIGINT, power saved');
-  process.exit(0);
-});
-
-// A "kill -TERM <process ID> will save the last cumulative power before killing the process
-process.on('SIGTERM', () => {
-  logger.info('\nGot SIGTERM, power saved');
-  process.exit(0);
-});
-
-// A "kill -HUP <process ID> will read the stored last cumulative power file
-process.on('SIGHUP', () => {
-  logger.info('\nGot SIGHUP, config loaded');
-  //      this.C = yaml.load(configFile);
-  //      this.init();
-});
-

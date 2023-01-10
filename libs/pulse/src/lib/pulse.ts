@@ -7,6 +7,7 @@ import { amsDecoder } from '@elwiz/ams';
 import { Logger } from 'winston';
 import { IClientPublishOptions } from 'mqtt/types/lib/client-options';
 import { getHomeAssistanDevices } from './homeassistant';
+import { Status } from './status';
 
 const list1Name = 'list1';
 const list2Name = 'list2';
@@ -16,7 +17,7 @@ export class Pulse {
   //lastHourConsumption: number;
   lastMeterProduction!: number;
   //lastHourProduction: number;
-  pulseStatus: unknown;
+  pulseStatus!: Status;
   //pulseData3: List2;
   date!: Date;
   //lastMeterConsumption: undefined,
@@ -86,7 +87,7 @@ export class Pulse {
 
   public handleMessages(message: Buffer) {
     const buf = Buffer.from(message);
-    const hex = message.toString('hex');
+    const hex = message.toString('hex').toUpperCase();
     // JSON data
     if (hex === '48656C6C6F') { // hello
       this.device.emit('announce', { topic: this.haBaseTopic + '/status', announce: 'online', pubOpts: { qos: 0, retain: false } });
@@ -95,12 +96,17 @@ export class Pulse {
       // BREAKING change
       const m = JSON.parse(msg);
       this.pulseStatus = m.status;
-      if (this.pulseStatus !== undefined)
+      if ( this.pulseStatus !== undefined )
         this.status.emit('status', {
           topic: this.config.pubStatus,
           announce: JSON.stringify(this.pulseStatus, null, 2),
           pubOpts: this.statOpts
         });
+      this.status.emit('status', {
+        topic: `${this.config.haBaseTopic}/signalStrength`,
+        announce: JSON.stringify(this.pulseStatus.rssi, null, 2),
+        pubOpts: this.statOpts
+      });
     }
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -157,7 +163,7 @@ export class Pulse {
     // It makes sense to "backdate" the value by 10 secs to
     // make for easier lookup the correct price data from Nordpool
     if (this.lastCumulativePower! > 0 && json.lastMeterConsumption) {
-      const lastHourActivePower = Number((json.lastMeterProduction - this.lastCumulativePower!).toFixed(3));
+      const lastHourActivePower = Number((json.lastMeterConsumption - this.lastCumulativePower!).toFixed(3));
       return {
         ...json,
         accumulatedConsumptionLastHour: lastHourActivePower,
@@ -189,50 +195,10 @@ export class Pulse {
       this.pulseData.emit(data.type, data);
       this.pulseData.emit('announce', { topic: this.haBaseTopic + '/power', announce: data.power.toString(), pubOpts });
     } else if (data.type === list2Name) {
-      const pubOpts = this.list2Opts;
       this.pulseData.emit(data.type, data);
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/power', announce: (data.power ?? 0).toString(), pubOpts });
-
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/voltagePhase1',
-        announce: (data.voltagePhase1 / 10).toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/voltagePhase2',
-        announce: (data.voltagePhase2 / 10).toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/voltagePhase3',
-        announce: (data.voltagePhase3 / 10).toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL1', announce: (data.currentL1 / 10).toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL2', announce: (data.currentL2 / 10).toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL3', announce: (data.currentL3 / 10).toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/signalStrength', announce: data.toString(), pubOpts });
     } else if (data.type === list3Name) {
       const pubOpts = this.list3Opts;
-      // this.pulseData.emit('announce', { topic: this.haBaseTopic + '/timestamp', announce: data.date, pubOpts });
-      // writeFileSync(join(__dirname, 'data', 'data3.json'), JSON.stringify({data, haData}, null, 2))
       this.pulseData.emit(list3Name, data);
-      this.lastCumulativePower = data.lastMeterConsumption!;
-      if (data.accumulatedConsumptionLastHour) {
-        this.pulseData.emit('announce', {
-          topic: this.haBaseTopic + '/accumulatedConsumptionLastHour',
-          announce: (data.accumulatedConsumptionLastHour ?? this.lastCumulativePower)?.toString() ?? '',
-          pubOpts
-        });
-      }
-      if (data.lastMeterConsumption) {
-        this.pulseData.emit('announce', {
-          topic: this.haBaseTopic + '/lastMeterConsumption',
-          announce: (data.lastMeterConsumption ?? this.lastCumulativePower)?.toString() ?? '',
-          pubOpts
-        });
-      }
 
       /*
            let haData = {
@@ -251,9 +217,9 @@ export class Pulse {
         //currency: "NOK",                      // (Tibber) currency of displayed cost
         //---------------------
         minPower: data.minPower,                // Watt (min consumption since midnight)
-        //averagePower: json.averagePower,        // Watt (avg consumption since midnight)
         maxPower: data.maxPower,                // Watt (max consumption since midnight)
-        //powerProduction: json.poweProduction, // Watt (A- at the moment)
+        //averagePower: json.averagePower,        // Watt (avg consumption since midnight)
+        //powerProduction: json.powerProduction, // Watt (A- at the moment)
         //powerReactive: 0,                     // kWAr (current reactive consumption, Q+)
         //powerProductionReactive: 0,           // kWAr (current net reactive production Q-)
         minPowerProduction: 0,                  // Watt (since midnight)
@@ -267,54 +233,6 @@ export class Pulse {
         currentL3: data.currentL3,
       };
        */
-      /*this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/lastMeterConsumption',
-        announce: haData.lastMeterConsumption.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/lastMeterProduction',
-        announce: haData.lastMeterProduction.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/accumulatedConsumption',
-        announce: haData.accumulatedConsumption.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/accumulatedProduction',
-        announce: haData.accumulatedProduction.toString()
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/accumulatedConsumptionLastHour',
-        announce: haData.accumulatedConsumptionLastHour.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/accumulatedProductionLastHour',
-        announce: haData.accumulatedProductionLastHour.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/minPower', announce: haData.minPower.toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/maxPower', announce: haData.maxPower.toString(), pubOpts });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/minPowerProduction',
-        announce: haData.minPowerProduction.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', {
-        topic: this.haBaseTopic + '/maxPowerProduction',
-        announce: haData.maxPowerProduction.toString(),
-        pubOpts
-      });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/voltagePhase1', announce: data.voltagePhase1.toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/voltagePhase2', announce: data.voltagePhase2.toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/voltagePhase3', announce: data.voltagePhase3.toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL1', announce: data.currentL1.toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL2', announce: data.currentL2.toString(), pubOpts });
-      this.pulseData.emit('announce', { topic: this.haBaseTopic + '/currentL3', announce: data.currentL3.toString(), pubOpts });*/
-      // this.pulseData.emit(this.haBaseTopic + "signalStrength", signal.toString(), list3Opts);
     }
   }
 }

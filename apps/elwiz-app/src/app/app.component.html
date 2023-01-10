@@ -1,0 +1,23 @@
+<mat-toolbar color="primary">
+  <span>ElWiz er</span>
+  <ng-container *ngIf="status$ | async as status">
+    <span [class.mat-warn]="status !== 'online'"
+          style="padding-left: 0.3rem"> {{ status }} &nbsp;
+    </span>
+    <mat-icon [class.mat-success]="status === 'online'"
+              [class.mat-warn]="status === 'offline'">{{ status === 'online' ? 'check_circle' : 'close_circle' }}</mat-icon>
+  </ng-container>
+</mat-toolbar>
+
+<div class="content">
+  <h1>Strømbruk: {{ (power$ | async | number:'1.2-4':'no') }}</h1>
+  <h1>Måler: {{ (meter$ | async | number:'1.2-4':'no') }}</h1>
+  <h1>Pris: {{price$ | async | number: '1.2-4':'no'}}</h1>
+  <h1>Snitt: {{averagePrice$ | async | number: '1.2-4':'no'}}</h1>
+  <h1>Siste time: {{ (lastHour$ | async | number:'1.2-4':'no') }}</h1>
+  <h1>Sist oppdatert: {{ (lastUpdate$ | async | date:'medium':'utc+2') }}</h1>
+
+  <elwiz-current [currentConsumption]="(currentComsumption$ | async)!"
+                 [data]="consumption$ | async"></elwiz-current>
+
+</div>

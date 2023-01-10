@@ -1,32 +1,32 @@
-import { format } from 'date-fns';
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import { Sequelize } from 'sequelize';
 import {
   List1Attributes,
   List1Data,
   List2Attributes,
   List2Data,
+  list2Hooks,
   List3Attributes,
   List3Data,
+  list3Hooks,
   PulseStatus,
   PulseStatusAttributes
 } from './pulse';
-import { ElwizConfig, PriceInfo } from '@elwiz/common';
+import { ElwizConfig, ElwizPrice } from '@elwiz/common';
 import { Logger } from 'winston';
+import { Price, PriceAttributes, priceHooks } from './price';
+import { OnlineStatus, OnlineStatusAttributes } from './status';
 
 
-export class Price extends Model<PriceInfo> {
-}
-
-export async function addPrices(prices: Array<PriceInfo>, logger: Logger) {
+export async function addPrices(prices: Array<ElwizPrice>, logger: Logger) {
   try {
-    const date = prices[ 0 ].date;
-    const exists = await Price.findOne({ where: { date: date } });
+    const date = prices[ 0 ].time_start;
+    const exists = await Price.findOne({ where: { time_start: date } });
     if ( exists === null ) {
       for ( const price of prices ) {
         try {
-          await Price.create({ ...price, date });
+          await Price.create({ ...price });
         } catch ( ex ) {
-          logger.error(ex);
+          logger.error('Failed to add prices', ex);
         }
       }
       logger.verbose(`Inserted prices for ${date}`);
@@ -45,44 +45,26 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
   } else {
     sequelize = new Sequelize({
       ...db,
-      logging: (sql: string, timing?: unknown) => { // "timing" contains details on insert statement
+      logging: (sql: string) => {
         return logger.debug(`${sql}`);
       }
     });
   }
   try {
-    Price.init({
-      date: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-      },
-      startTime: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        primaryKey: true,
-        get() {
-          const rawValue = this.getDataValue('startTime') as unknown as Date;
-          return format(rawValue, `yyyy-MM-dd HH:mm:ss`);
-        }
-      },
-      endTime: {
-        type: DataTypes.DATE,
-        allowNull: false
-      },
-      price: {
-        type: DataTypes.FLOAT,
-        allowNull: false
-      },
-    }, { sequelize, modelName: 'Price' });
-    await Price.sync();
-    await PulseStatus.init(PulseStatusAttributes, { sequelize, modelName: 'PulseStatus' });
-    await List1Data.init(List1Attributes, { sequelize, modelName: 'List1' });
-    await List2Data.init(List2Attributes, { sequelize, modelName: 'List2' });
-    await List3Data.init(List3Attributes, { sequelize, modelName: 'List3' });
-    await List1Data.sync();
-    await List2Data.sync();
-    await List3Data.sync();
-    await PulseStatus.sync();
+    Price.init(PriceAttributes, { sequelize, modelName: 'Price', hooks: priceHooks });
+    OnlineStatus.init(OnlineStatusAttributes, { sequelize, modelName: 'OnlineStatus' });
+    PulseStatus.init(PulseStatusAttributes, { sequelize, modelName: 'PulseStatus' });
+    List1Data.init(List1Attributes, { sequelize, modelName: 'List1' });
+    List2Data.init(List2Attributes, {
+      sequelize, modelName: 'List2', hooks: list2Hooks
+    });
+    List3Data.init(List3Attributes, { sequelize, modelName: 'List3', hooks: list3Hooks });
+    await Price.sync({ force: true });
+    await OnlineStatus.sync({});
+    await List1Data.sync({});
+    await List2Data.sync({});
+    await List3Data.sync({});
+    await PulseStatus.sync({});
   } catch ( ex ) {
     logger.error(ex);
   }
@@ -91,7 +73,8 @@ export async function initModels(config: ElwizConfig, logger: Logger) {
     List1Data,
     List2Data,
     List3Data,
-    PulseStatus
+    PulseStatus,
+    OnlineStatus
   };
 }
 

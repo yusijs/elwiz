@@ -1,5 +1,8 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Op } from 'sequelize';
 import { List1, List2, List3, Status } from '@elwiz/common';
+import { endOfHour, startOfDay, startOfHour } from 'date-fns';
+import { ModelHooks } from 'sequelize/types/hooks';
+import { Attributes } from 'sequelize/types/model';
 
 type WithHex<T> = T & { hex: string; createdAt?: Date; updatedAt?: Date; id?: number; };
 
@@ -12,7 +15,7 @@ export const List1Attributes = {
     allowNull: false
   },
   hex: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   }
 };
@@ -22,11 +25,11 @@ export class List2Data extends Model<WithHex<Omit<List2, 'type'>>> {
 
 export const List2Attributes = {
   date: {
-    type: DataTypes.DATE,
+    type: DataTypes.STRING,
     allowNull: false
   },
   hex: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   weekDay: {
@@ -49,11 +52,23 @@ export const List2Attributes = {
     type: DataTypes.FLOAT,
     allowNull: true
   },
+  maxPowerToday: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  minPowerToday: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
   minPower: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
   maxPower: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  avgPower: {
     type: DataTypes.FLOAT,
     allowNull: true
   },
@@ -107,7 +122,55 @@ export const List2Attributes = {
   },
 };
 
+export const list2Hooks: Partial<ModelHooks<List2Data, Attributes<List2Data>>> = {
+  beforeCreate: async function (list: List2Data): Promise<void> {
+    const current = <Date>list.getDataValue('createdAt');
+    const hr = startOfHour(current);
+    const endHr = endOfHour(current);
+    const rest = await List2Data.findAll({ where: { [ Op.and ]: { createdAt: { [ Op.gte ]: hr, [ Op.lte ]: endHr } } } });
+    const power = rest.map(e => e.getDataValue('power'));
+    const max = Math.max(...power, list.getDataValue('power'));
+    const min = Math.min(...power, list.getDataValue('power'));
+    const avg = ( list.getDataValue('power') + power.reduce((a, b) => a + b, 0) ) / ( power.length + 1 );
+    list.setDataValue('maxPower', max);
+    list.setDataValue('minPower', min);
+    list.setDataValue('avgPower', avg);
+  }
+};
+
 export class List3Data extends Model<WithHex<Omit<List3, 'type'>>> {
+  declare public power: number;
+  declare public minPower: number;
+  declare public maxPower: number;
+  declare public powerProduction: number;
+  declare public powerReactive: number;
+  declare public powerProductionReactive: number;
+  declare public currentL1: number;
+  declare public currentL2: number;
+  declare public currentL3: number;
+  declare public voltagePhase1: number;
+  declare public voltagePhase2: number;
+  declare public voltagePhase3: number;
+  declare public lastMeterConsumption: number;
+  declare public lastMeterProduction: number;
+  declare public lastMeterConsumptionReactive: number;
+  declare public lastMeterProductionReactive: number;
+  declare public accumulatedConsumptionLastHour: number;
+  declare public accumulatedConsumption: number;
+  declare public accumulatedProductionLastHour: number;
+  declare public accumulatedProduction: number;
+  declare public customerPrice: number;
+  declare public lastHourCost: number;
+  declare public spotPrice: number;
+  declare public peakConsumptionSinceMidnight: number;
+  declare public lowestConsumptionSinceMidnight: number;
+  declare public date: Date;
+  declare public meterDate: Date;
+  declare public hex: string;
+  declare public weekDay: string;
+  declare public meterVersion: string;
+  declare public meterId: string;
+  declare public meterType: string;
 }
 
 export const List3Attributes = {
@@ -116,7 +179,7 @@ export const List3Attributes = {
     allowNull: false
   },
   hex: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   weekDay: {
@@ -239,6 +302,43 @@ export const List3Attributes = {
     type: DataTypes.DATE,
     allowNull: true
   },
+  peakConsumptionSinceMidnight: {
+    type: DataTypes.FLOAT
+  },
+  lowestConsumptionSinceMidnight: {
+    type: DataTypes.FLOAT
+  }
+};
+
+export const list3Hooks: Partial<ModelHooks<List3Data, Attributes<List3Data>>> = {
+  beforeCreate: async function (list: List3Data): Promise<void> {
+    if ( !list ) {
+      console.error('List3 value is undefined', list);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const current = list.date;
+    const hr = startOfDay(current);
+    const rest = await List3Data.findAll({ where: { date: { [ Op.gte ]: hr } }, order: [ [ 'date', 'DESC' ] ] });
+    const previous = await List3Data.findOne({ order: [ [ 'createdAt', 'DESC' ] ] });
+    if ( previous ) {
+      const lastMeterConsumption = previous.getDataValue('lastMeterConsumption');
+      const lastMeterProduction = previous.getDataValue('lastMeterProduction');
+      list.setDataValue('accumulatedConsumptionLastHour', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);
+      list.setDataValue('accumulatedProductionLastHour', list.getDataValue('lastMeterProduction') - lastMeterProduction);
+    }
+    const firstOfDay = rest[ rest.length - 1 ];
+    if ( firstOfDay ) {
+      const lastMeterConsumption = firstOfDay.getDataValue('lastMeterConsumption');
+      const lastMeterProduction = firstOfDay.getDataValue('lastMeterProduction');
+      list.setDataValue('accumulatedConsumption', list.getDataValue('lastMeterConsumption') - lastMeterConsumption);
+      list.setDataValue('accumulatedProduction', list.getDataValue('lastMeterProduction') - lastMeterProduction);
+    }
+    const consumption = rest.map(e => e.getDataValue('accumulatedConsumptionLastHour') ?? 0);
+    const max = Math.max(...consumption, list.getDataValue('peakConsumptionSinceMidnight') ?? 0);
+    const min = Math.min(...consumption, list.getDataValue('lowestConsumptionSinceMidnight') ?? 0);
+    list.setDataValue('peakConsumptionSinceMidnight', max);
+    list.setDataValue('lowestConsumptionSinceMidnight', min);
+  }
 };
 
 export class PulseStatus extends Model<Status> {

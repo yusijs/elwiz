@@ -22,7 +22,7 @@ export class ElwizLogger {
   public logger: Logger;
 
   constructor(config: ElwizConfig) {
-    let logtype = config.logFormat ?? 1;
+    let logtype = ( config.logFormat ?? 1 ) as keyof typeof logTypes;
     if ( !logTypes[ logtype ] ) {
       logtype = 1;
     }

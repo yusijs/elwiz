@@ -5,6 +5,8 @@
     "common": "libs/common",
     "database": "libs/database",
     "elwiz": "apps/elwiz",
+    "elwiz-app": "apps/elwiz-app",
+    "homeassistant": "libs/homeassistant",
     "mqtt": "libs/mqtt",
     "prices": "libs/prices",
     "pulse": "libs/pulse"

@@ -18,6 +18,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@elwiz-ts/homeassistant": [
+        "libs/homeassistant/src/index.ts"
+      ],
       "@elwiz/ams": [
         "libs/ams/src/index.ts"
       ],
